@@ -3,5 +3,7 @@
 
     <string name="app_name">Chatfle</string>
     <string name="title_conversation_detail">Conversation Detail</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
 
 </resources>
