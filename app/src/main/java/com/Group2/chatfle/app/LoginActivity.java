@@ -1,6 +1,8 @@
 package com.Group2.chatfle.app;
 
+import android.content.Intent;
 import android.graphics.Typeface;
+import android.os.AsyncTask;
 import android.os.SystemClock;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
@@ -16,7 +18,10 @@ import com.cengalabs.flatui.FlatUI;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.MessageDigest;
@@ -32,13 +37,13 @@ public class LoginActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         TextView title = (TextView) findViewById(R.id.title_view);
-        title.setTypeface(Typeface.createFromAsset(getAssets(),"fonts/Cantarell-Regular.ttf"));
+        title.setTypeface(Typeface.createFromAsset(getAssets(),"fonts/Pacifico.ttf"));
         usrEmail = (EditText) findViewById(R.id.email_text);
         usrPswd = (EditText) findViewById(R.id.password_text);
         ActionBar actionBar = getSupportActionBar();
-        actionBar.hide();
+        //actionBar.hide();
         FlatUI.setDefaultTheme(FlatUI.DEEP);
-        FlatUI.setActionBarTheme(this, FlatUI.DEEP, false, false);
+        FlatUI.setActionBarTheme(this, FlatUI.DEEP, true, false);
     }
 
 
@@ -52,31 +57,16 @@ public class LoginActivity extends ActionBarActivity {
 
     public void sendCreds(View v){
         if (!usrEmail.getText().toString().isEmpty() || !usrPswd.getText().toString().isEmpty()){
-            long unixTime = System.currentTimeMillis() / 1000L;
-            String dirtyInput = usrEmail.getText().toString()+usrPswd.getText().toString()+String.valueOf(unixTime);
+            String dirtyInput = usrEmail.getText().toString()+usrPswd.getText().toString()+"salt";
             String creds = md5(dirtyInput);
-            String urlParameters = "hash="+creds+"&user="+usrEmail.toString()+"&pass="+usrPswd.toString();
+            String urlParameters = "hash="+creds;
             String request = "http://example.com/index.php";
-            try {
-                URL url = new URL(request);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setDoOutput(true);
-                connection.setDoInput(true);
-                connection.setInstanceFollowRedirects(false);
-                connection.setRequestMethod("POST");
-                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-                connection.setRequestProperty("charset", "utf-8");
-                connection.setRequestProperty("Content-Length", "" + Integer.toString(urlParameters.getBytes().length));
-                connection.setUseCaches (false);
-
-                DataOutputStream wr = new DataOutputStream(connection.getOutputStream ());
-                wr.writeBytes(urlParameters);
-                wr.flush();
-                wr.close();
-                connection.disconnect();
-            } catch (IOException e){
-                e.printStackTrace();
-            }
+            Networking n = new Networking();
+            n.execute(request, urlParameters);
+        }
+        else {
+            startActivity(new Intent(this, HomeActivity.class));
+            finish();
         }
     }
 
@@ -91,6 +81,33 @@ public class LoginActivity extends ActionBarActivity {
             e.printStackTrace();
         }
         return md5;
+    }
+
+    private class Networking extends AsyncTask<String, Void, Void> {
+        @Override
+        protected Void doInBackground(String... params){
+            try {
+                URL url = new URL(params[0]);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setDoOutput(true);
+                connection.setDoInput(true);
+                connection.setInstanceFollowRedirects(false);
+                connection.setRequestMethod("POST");
+                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+                connection.setRequestProperty("charset", "utf-8");
+                connection.setRequestProperty("Content-Length", "" + Integer.toString(params[1].getBytes().length));
+                connection.setUseCaches (false);
+
+                DataOutputStream wr = new DataOutputStream(connection.getOutputStream ());
+                wr.writeBytes(params[1]);
+                wr.flush();
+                wr.close();
+                connection.disconnect();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
     }
 
     @Override

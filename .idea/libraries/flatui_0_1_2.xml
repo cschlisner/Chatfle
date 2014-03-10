@@ -1,8 +1,8 @@
 <component name="libraryTable">
   <library name="flatui-0.1.2">
     <CLASSES>
-      <root url="file://$PROJECT_DIR$/app/build/exploded-bundles/ComGithubEluleciFlatui012.aar/res" />
-      <root url="jar://$PROJECT_DIR$/app/build/exploded-bundles/ComGithubEluleciFlatui012.aar/classes.jar!/" />
+      <root url="file://$PROJECT_DIR$/app/build/exploded-aar/com.github.eluleci/flatui/0.1.2/res" />
+      <root url="jar://$PROJECT_DIR$/app/build/exploded-aar/com.github.eluleci/flatui/0.1.2/classes.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
