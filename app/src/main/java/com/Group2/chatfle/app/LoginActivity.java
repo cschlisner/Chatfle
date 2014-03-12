@@ -41,9 +41,10 @@ public class LoginActivity extends ActionBarActivity {
         usrEmail = (EditText) findViewById(R.id.email_text);
         usrPswd = (EditText) findViewById(R.id.password_text);
         ActionBar actionBar = getSupportActionBar();
-        //actionBar.hide();
+        actionBar.hide();
         FlatUI.setDefaultTheme(FlatUI.DEEP);
         FlatUI.setActionBarTheme(this, FlatUI.DEEP, true, false);
+        getSupportActionBar().setBackgroundDrawable(FlatUI.getActionBarDrawable(FlatUI.DEEP, false));
     }
 
 
@@ -60,7 +61,7 @@ public class LoginActivity extends ActionBarActivity {
             String dirtyInput = usrEmail.getText().toString()+usrPswd.getText().toString()+"salt";
             String creds = md5(dirtyInput);
             String urlParameters = "hash="+creds;
-            String request = "http://example.com/index.php";
+            String request = "http://m.chatfle.com/";
             Networking n = new Networking();
             n.execute(request, urlParameters);
         }
@@ -86,6 +87,13 @@ public class LoginActivity extends ActionBarActivity {
     private class Networking extends AsyncTask<String, Void, Void> {
         @Override
         protected Void doInBackground(String... params){
+            if (sendData(params))
+                recieveData();
+
+            return null;
+        }
+
+        protected boolean sendData(String... params){
             try {
                 URL url = new URL(params[0]);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -97,16 +105,16 @@ public class LoginActivity extends ActionBarActivity {
                 connection.setRequestProperty("charset", "utf-8");
                 connection.setRequestProperty("Content-Length", "" + Integer.toString(params[1].getBytes().length));
                 connection.setUseCaches (false);
-
                 DataOutputStream wr = new DataOutputStream(connection.getOutputStream ());
                 wr.writeBytes(params[1]);
                 wr.flush();
                 wr.close();
                 connection.disconnect();
+                return true;
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            return null;
+            return false;
         }
     }
 
