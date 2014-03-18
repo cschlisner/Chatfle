@@ -5,4 +5,7 @@
     </style>
     <style name="ActionbarTheme" parent="Theme.AppCompat.Light.DarkActionBar">
     </style>
+    <style name="TextViewTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <item name="android:textColor">#fff</item>
+    </style>
 </resources>

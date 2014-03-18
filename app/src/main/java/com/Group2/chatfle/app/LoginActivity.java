@@ -1,9 +1,9 @@
 package com.Group2.chatfle.app;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.AsyncTask;
-import android.os.SystemClock;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
@@ -12,23 +12,26 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.cengalabs.flatui.FlatUI;
 
-import java.io.DataOutputStream;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.HttpURLConnection;
-import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.Timestamp;
-import java.sql.Time;
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.List;
 
 public class LoginActivity extends ActionBarActivity {
     EditText usrEmail, usrPswd;
@@ -58,17 +61,16 @@ public class LoginActivity extends ActionBarActivity {
 
     public void sendCreds(View v){
         if (!usrEmail.getText().toString().isEmpty() || !usrPswd.getText().toString().isEmpty()){
-            String dirtyInput = usrEmail.getText().toString()+usrPswd.getText().toString()+"salt";
+            String dirtyInput = usrEmail.getText().toString()+md5(usrPswd.getText().toString());
             String creds = md5(dirtyInput);
-            String urlParameters = "hash="+creds;
+            String user = usrEmail.getText().toString();
+            String pass = usrPswd.getText().toString();
             String request = "http://m.chatfle.com/";
             Networking n = new Networking();
-            n.execute(request, urlParameters);
+            n.execute(request, pass, user);
+
         }
-        else {
-            startActivity(new Intent(this, HomeActivity.class));
-            finish();
-        }
+
     }
 
     public static String md5(String input) {
@@ -84,37 +86,70 @@ public class LoginActivity extends ActionBarActivity {
         return md5;
     }
 
-    private class Networking extends AsyncTask<String, Void, Void> {
+    private class Networking extends AsyncTask<String, Void, Boolean> {
+        private ProgressDialog dialog = new ProgressDialog(LoginActivity.this);
         @Override
-        protected Void doInBackground(String... params){
-            if (sendData(params))
-                recieveData();
-
-            return null;
+        protected void onPreExecute() {
+            this.dialog.setMessage("Please wait");
+            this.dialog.show();
+        }
+        @Override
+        protected Boolean doInBackground(String... params){
+//            System.out.println(sendData(params).getStatusLine().getStatusCode());
+//            try {
+//                HttpEntity entity = sendData(params).getEntity();
+//                System.out.println(EntityUtils.toString(entity));
+//            }
+//            catch (Exception e){
+//                e.printStackTrace();
+//            }
+            //return (sendData(params).getStatusLine().getStatusCode()==200);
+            return true;
         }
 
-        protected boolean sendData(String... params){
+        protected HttpResponse sendData(String... params){
+            // Create a new HttpClient and Post Header
+            HttpClient httpclient = new DefaultHttpClient();
+            HttpPost httppost = new HttpPost(params[0]);
+
             try {
-                URL url = new URL(params[0]);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setDoOutput(true);
-                connection.setDoInput(true);
-                connection.setInstanceFollowRedirects(false);
-                connection.setRequestMethod("POST");
-                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-                connection.setRequestProperty("charset", "utf-8");
-                connection.setRequestProperty("Content-Length", "" + Integer.toString(params[1].getBytes().length));
-                connection.setUseCaches (false);
-                DataOutputStream wr = new DataOutputStream(connection.getOutputStream ());
-                wr.writeBytes(params[1]);
-                wr.flush();
-                wr.close();
-                connection.disconnect();
-                return true;
-            } catch (Exception e) {
-                e.printStackTrace();
+                // Add your data
+                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
+                nameValuePairs.add(new BasicNameValuePair("username", params[2]));
+                nameValuePairs.add(new BasicNameValuePair("password", params[1]));
+                httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+
+                // Execute HTTP Post Request
+                return httpclient.execute(httppost);
+
+
+            } catch (ClientProtocolException e) {
+                // TODO Auto-generated catch block
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
             }
-            return false;
+            return null;
+        }
+        @Override
+        protected void onPostExecute(final Boolean success) {
+            if (dialog.isShowing()) {
+                dialog.dismiss();
+            }
+            if (success) {
+                startActivity(new Intent(getApplicationContext(), HomeActivity.class));
+                finish();
+                usrPswd.setText("");
+                usrEmail.setText("");
+            }
+            else {
+                try {
+                    Toast toast = Toast.makeText(getApplicationContext(), "Invalid Username or Password", Toast.LENGTH_SHORT);
+                    toast.show();
+                }
+                catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
