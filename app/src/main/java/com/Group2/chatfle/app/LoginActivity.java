@@ -1,9 +1,12 @@
 package com.Group2.chatfle.app;
 
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.os.AsyncTask;
+import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
@@ -66,7 +69,7 @@ public class LoginActivity extends ActionBarActivity {
             String user = usrEmail.getText().toString();
             String pass = usrPswd.getText().toString();
             String request = "http://m.chatfle.com/";
-            Networking n = new Networking();
+            LoginNetworking n = new LoginNetworking();
             n.execute(request, pass, user);
 
         }
@@ -86,7 +89,7 @@ public class LoginActivity extends ActionBarActivity {
         return md5;
     }
 
-    private class Networking extends AsyncTask<String, Void, Boolean> {
+    private class LoginNetworking extends AsyncTask<String, Void, Boolean> {
         private ProgressDialog dialog = new ProgressDialog(LoginActivity.this);
         @Override
         protected void onPreExecute() {
@@ -98,12 +101,17 @@ public class LoginActivity extends ActionBarActivity {
 //            System.out.println(sendData(params).getStatusLine().getStatusCode());
 //            try {
 //                HttpEntity entity = sendData(params).getEntity();
-//                System.out.println(EntityUtils.toString(entity));
+//                String hash = EntityUtils.toString(entity);
+//                System.out.println(hash);
+//                SharedPreferences sharedpreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+//                SharedPreferences.Editor e = sharedpreferences.edit();
+//                e.putString("CREDENTIALS", hash);
+//                e.commit();
 //            }
 //            catch (Exception e){
 //                e.printStackTrace();
 //            }
-            //return (sendData(params).getStatusLine().getStatusCode()==200);
+           // return (sendData(params).getStatusLine().getStatusCode()==200);
             return true;
         }
 
@@ -114,7 +122,8 @@ public class LoginActivity extends ActionBarActivity {
 
             try {
                 // Add your data
-                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
+                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(3);
+                nameValuePairs.add(new BasicNameValuePair("command", "Login"));
                 nameValuePairs.add(new BasicNameValuePair("username", params[2]));
                 nameValuePairs.add(new BasicNameValuePair("password", params[1]));
                 httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));

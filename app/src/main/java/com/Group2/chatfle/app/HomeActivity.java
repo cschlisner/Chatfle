@@ -5,6 +5,7 @@ import android.app.FragmentManager;
 import android.app.SearchManager;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.os.AsyncTask;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
@@ -29,21 +30,32 @@ public class HomeActivity extends ActionBarActivity {
 
     DrawerLayout drawerLayout;
     ListView drawerList;
+    ImageView img;
     private ActionBarDrawerToggle drawerToggle;
 
     private CharSequence drawerTitle;
     private CharSequence title;
-    static private String[] s = new String[]{"Item 1", "Item 2"};
+    static private String[] drawerItems = new String[]{"Conversations", "Something", "Settings"}; //placeholder
+    static private String[] conversations = new String[]{"ONE", "TWO", "THREE"};
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
         FlatUI.setDefaultTheme(FlatUI.DARK);
         FlatUI.setActionBarTheme(this, FlatUI.DARK, true, true);
-        title = drawerTitle = getTitle();
+        img = (ImageView) findViewById(R.id.imageView);
+//        img.setImageDrawable(getResources().getDrawable(R.drawable.ic_launcher));
+        //Preload Conversations
+
+        ListView convList = (ListView) findViewById(R.id.conversation_list);
+        convList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, conversations));
+        convList.getAdapter();
+        convList.setOnItemClickListener(new DrawerItemClickListener());
+        //Drawer
+        title = drawerTitle = "Chatfle";
         drawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawerList = (ListView) findViewById(R.id.left_drawer);
-        drawerList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, s));
+        drawerList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, drawerItems));
         drawerList.getAdapter();
         drawerList.setOnItemClickListener(new DrawerItemClickListener());
         drawerToggle = new ActionBarDrawerToggle(
@@ -87,10 +99,7 @@ public class HomeActivity extends ActionBarActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         // The action bar home/up action should open or close the drawer.
         // ActionBarDrawerToggle will take care of this.
-        if (drawerToggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        return false;
+        return (drawerToggle.onOptionsItemSelected(item));
     }
 
     /* The click listner for ListView in the navigation drawer */
@@ -102,18 +111,22 @@ public class HomeActivity extends ActionBarActivity {
     }
 
     private void selectItem(int position) {
-        // update the main content by replacing fragments
-        Fragment fragment = new ConversationFragment();
-        Bundle args = new Bundle();
-        args.putInt(ConversationFragment.ARG_CONVO_NUMBER, position);
-        fragment.setArguments(args);
+        if (drawerItems[position].equals("Settings")) {
+            startActivity(new Intent(this, SettingsActivity.class));
+        }
+        else {
+            // update the main content by replacing fragments
+            Fragment fragment = new ContentFragment();
+            Bundle args = new Bundle();
+            args.putInt(ContentFragment.ARG_CONVO_NUMBER, position);
+            fragment.setArguments(args);
 
-        FragmentManager fragmentManager = getFragmentManager();
-        fragmentManager.beginTransaction().replace(R.id.content_frame, fragment).commit();
-
-        // update selected item and title, then close the drawer
-        drawerList.setItemChecked(position, true);
-        setTitle(s[position]);
+            FragmentManager fragmentManager = getFragmentManager();
+            fragmentManager.beginTransaction().replace(R.id.content_frame, fragment).commit();
+            // update selected item and title, then close the drawer
+            drawerList.setItemChecked(position, true);
+            setTitle(drawerItems[position]);
+        }
         drawerLayout.closeDrawer(drawerList);
     }
 
@@ -145,19 +158,43 @@ public class HomeActivity extends ActionBarActivity {
     /**
      * Fragment that appears in the "content_frame", shows a planet
      */
-    public static class ConversationFragment extends Fragment {
+    public static class ContentFragment extends Fragment {
         public static final String ARG_CONVO_NUMBER = "convo_number";
+        public static final String ARG_LIST_SAUCE = "list_sauce";
 
-        public ConversationFragment() {
+        public ContentFragment() {
             // Empty constructor required for fragment subclasses
         }
 
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_conversation, container, false);
-            int i = getArguments().getInt(ARG_CONVO_NUMBER);
-            String planet = s[i];
-            getActivity().setTitle(planet);
+            int layout, i=0;
+            //String source = getArguments().getString(ARG_LIST_SAUCE);
+            try {
+                i = (getArguments().isEmpty()) ? 0 : getArguments().getInt(ARG_CONVO_NUMBER);
+            }catch (NullPointerException e){
+                e.printStackTrace();
+            }
+            String itemText = drawerItems[i];
+            if (i==0) {
+                layout = R.layout.fragment_conversation;
+            }
+            else {
+                layout = R.layout.other_fragment;
+            }
+            View rootView = inflater.inflate(layout, container, false);
+
+            //Data collection --PUT THIS IN THE CONVERSATIONS OPTION FRAGMENT--
+//            Networking getConvos = new Networking();
+//            getConvos.execute("Get Conversation List");
+//            if (getConvos.getStatus()== AsyncTask.Status.FINISHED && getConvos.sucess){
+//                //Handle Http Response and JSON interpretation
+//            }
+
+            getActivity().setTitle(itemText);
+            if (itemText.equals("Home")){
+                //Figure out how to switch xml layouts dynamically
+            }
             return rootView;
         }
     }

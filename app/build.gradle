@@ -22,6 +22,7 @@ dependencies {
     compile 'com.android.support:appcompat-v7:+'
     compile 'com.google.android.gms:play-services:4.0.30'
     compile 'com.github.eluleci:flatui:0.1.2'
+    compile 'com.android.support:support-v4:18.0.0'
     // You must install or update the Google Repository through the SDK manager to use this dependency.
     // The Google Repository (separate from the corresponding library) can be found in the Extras category.
     // 
