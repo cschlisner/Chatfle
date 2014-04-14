@@ -1,6 +1,7 @@
 package com.Group2.chatfle.app;
 
 import android.app.ProgressDialog;
+import android.content.Entity;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.widget.Toast;
@@ -13,6 +14,7 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -21,47 +23,29 @@ import java.util.List;
 /**
  * Created by Cole on 3/18/14.
  */
-public class Networking extends AsyncTask<String, Void, Boolean> {
-    public boolean sucess;
-    public HttpResponse response;
-    @Override
-    protected void onPreExecute() {
-        //Bleh
-    }
-    @Override
-    protected Boolean doInBackground(String... params){
-        this.response = sendData(params);
-        return true;
+public class Networking {
+    private HttpResponse response;
+    private String[] params;
+
+    public Networking(String... params) {
+        this.params = new String[params.length];
+        int j =0;
+        for (String i : params)
+            this.params[j++] = i;
     }
 
-    protected HttpResponse sendData(String... params){
-        // Create a new HttpClient and Post Header
-        HttpClient httpclient = new DefaultHttpClient();
-        HttpPost httppost = new HttpPost(params[0]);
+    public HttpResponse exec(){
+        return response;
+    }
 
+    public void onSuccess(HttpResponse result){
         try {
-            // Add your data
-            int index = params.length;
-            List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(index);
-            nameValuePairs.add(new BasicNameValuePair("command", params[0]));
-            for (int i=1; i<index; ++i) {
-                nameValuePairs.add(new BasicNameValuePair("flag "+i, params[i]));
-            }
-            httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-
-            // Execute HTTP Post Request
-            return httpclient.execute(httppost);
-
-
-        } catch (ClientProtocolException e) {
-            // TODO Auto-generated catch block
+            System.out.println("response is "+EntityUtils.toString(result.getEntity())+" @ Networking.onSuccess()");
         } catch (IOException e) {
-            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
-        return null;
+        response = result;
     }
-    @Override
-    protected void onPostExecute(final Boolean success) {
-        this.sucess = success;
-    }
+
+
 }

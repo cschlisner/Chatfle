@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:flatui="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical" android:layout_width="match_parent"
     android:layout_height="match_parent">
-    <ListView
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:id="@+id/conversation_list">
+    <ProgressBar
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/loadingImg"
+        android:contentDescription=""
+        android:layout_gravity="center"
+        android:layout_centerInParent="true" />
+        <ListView
+            android:id="@+id/conversation_list"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"/>
 
-        </ListView>
-</LinearLayout>
+    <com.cengalabs.flatui.views.FlatButton
+        android:id="@+id/retry_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="refreshConvos"
+        android:text="Retry"
+        flatui:theme="Dark"
+        flatui:isFullFlat="true"
+        flatui:textAppearance="light"
+        android:hint="Retry Connection"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true"
+        android:visibility="gone"/>
+</RelativeLayout>

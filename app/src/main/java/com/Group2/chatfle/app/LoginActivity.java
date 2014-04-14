@@ -41,11 +41,21 @@ public class LoginActivity extends ActionBarActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        SharedPreferences sharedpreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        String h = sharedpreferences.getString("CREDENTIALS", "");
+        if (!h.isEmpty()) {
+            Globals.hash = h;
+            startActivity(new Intent(this, HomeActivity.class));
+            finish();
+        }
         setContentView(R.layout.activity_login);
         TextView title = (TextView) findViewById(R.id.title_view);
         title.setTypeface(Typeface.createFromAsset(getAssets(),"fonts/Pacifico.ttf"));
         usrEmail = (EditText) findViewById(R.id.email_text);
+        //Take this out
+        usrEmail.setText("testtest");
         usrPswd = (EditText) findViewById(R.id.password_text);
+        usrPswd.setText("123");
         ActionBar actionBar = getSupportActionBar();
         actionBar.hide();
         FlatUI.setDefaultTheme(FlatUI.DEEP);
@@ -56,16 +66,11 @@ public class LoginActivity extends ActionBarActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.login, menu);
-        return true;
+        return false;
     }
 
     public void sendCreds(View v){
         if (!usrEmail.getText().toString().isEmpty() || !usrPswd.getText().toString().isEmpty()){
-            String dirtyInput = usrEmail.getText().toString()+md5(usrPswd.getText().toString());
-            String creds = md5(dirtyInput);
             String user = usrEmail.getText().toString();
             String pass = usrPswd.getText().toString();
             String request = "http://m.chatfle.com/";
@@ -74,19 +79,6 @@ public class LoginActivity extends ActionBarActivity {
 
         }
 
-    }
-
-    public static String md5(String input) {
-        String md5 = null;
-        if(null == input) return null;
-        try {
-            MessageDigest digest = MessageDigest.getInstance("MD5");
-            digest.update(input.getBytes(), 0, input.length());
-            md5 = new BigInteger(1, digest.digest()).toString(16);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        return md5;
     }
 
     private class LoginNetworking extends AsyncTask<String, Void, Boolean> {
@@ -98,21 +90,22 @@ public class LoginActivity extends ActionBarActivity {
         }
         @Override
         protected Boolean doInBackground(String... params){
-//            System.out.println(sendData(params).getStatusLine().getStatusCode());
-//            try {
-//                HttpEntity entity = sendData(params).getEntity();
-//                String hash = EntityUtils.toString(entity);
-//                System.out.println(hash);
-//                SharedPreferences sharedpreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-//                SharedPreferences.Editor e = sharedpreferences.edit();
-//                e.putString("CREDENTIALS", hash);
-//                e.commit();
-//            }
-//            catch (Exception e){
-//                e.printStackTrace();
-//            }
-           // return (sendData(params).getStatusLine().getStatusCode()==200);
-            return true;
+            HttpResponse r = sendData(params);
+            System.out.println(r.getStatusLine().getStatusCode());
+            try {
+                String hash = EntityUtils.toString(r.getEntity());
+                System.out.println(hash);
+                SharedPreferences sharedpreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                SharedPreferences.Editor e = sharedpreferences.edit();
+                e.putString("CREDENTIALS", hash);
+                e.commit();
+                Globals.hash = hash;
+            }
+            catch (Exception e){
+                e.printStackTrace();
+                return false;
+            }
+           return (r.getStatusLine().getStatusCode()==200);
         }
 
         protected HttpResponse sendData(String... params){
@@ -122,8 +115,7 @@ public class LoginActivity extends ActionBarActivity {
 
             try {
                 // Add your data
-                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(3);
-                nameValuePairs.add(new BasicNameValuePair("command", "Login"));
+                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
                 nameValuePairs.add(new BasicNameValuePair("username", params[2]));
                 nameValuePairs.add(new BasicNameValuePair("password", params[1]));
                 httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
