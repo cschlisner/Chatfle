@@ -3,31 +3,25 @@ package com.Group2.chatfle.app;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.ProgressDialog;
-import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import android.graphics.Paint;
 import android.os.AsyncTask;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.support.v7.internal.view.menu.MenuView;
-import android.util.JsonReader;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -50,9 +44,6 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class HomeActivity extends ActionBarActivity {
 
@@ -67,7 +58,7 @@ public class HomeActivity extends ActionBarActivity {
     private CharSequence title;
     private ContentFragment convFrag;
     static private String[] drawerItems = new String[]{"Conversations", "Settings", "Logout"}; //placeholder
-    static private String[][] conversations;
+    static private String[][] conversations; // [0] = id, [1] = display_name, [2] = msg
     static private String[] convNames;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -196,8 +187,27 @@ public class HomeActivity extends ActionBarActivity {
         retryButton.setVisibility(View.GONE);
         System.out.println("creds: "+ Globals.hash);
         Globals.context = this;
-        new Net().execute("http://m.chatfle.com/get_convos.php", Globals.hash);
-        Thread.yield();
+
+        Networking.execute(new NetCallBack<Void, String>() {
+            @Override
+            public Void callPre() {
+                loadSpinner.setVisibility(View.VISIBLE);
+                return null;
+            }
+
+            @Override
+            public Void callPost(String result) {
+                loadSpinner.setVisibility(View.GONE);
+                if (result != null) {
+                    setArrays(result);
+                }
+                else {
+                    Toast.makeText(Globals.context, "could not get response", Toast.LENGTH_SHORT).show();
+                    retryButton.setVisibility(View.VISIBLE);
+                }
+                return null;
+            }
+        }, "http://m.chatfle.com/get_convos", "hash", Globals.hash);
     }
 
     private void setArrays(String response){
@@ -231,7 +241,7 @@ public class HomeActivity extends ActionBarActivity {
         }
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_conversation, container, false);
+            View rootView = inflater.inflate(R.layout.fragment_conversationlist, container, false);
             loadSpinner = (ProgressBar) rootView.findViewById(R.id.loadingImg);
             retryButton = (Button) rootView.findViewById(R.id.retry_button);
             refreshConvos();
@@ -250,93 +260,15 @@ public class HomeActivity extends ActionBarActivity {
             convList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                    Fragment fragment = new ConversationFragment();
-                    Bundle args = new Bundle();
-                    args.putInt(ConversationFragment.ARG_CONVO_NUMBER, i);
-                    fragment.setArguments(args);
-                    FragmentManager fragmentManager = getFragmentManager();
-                    try {
-                        fragmentManager.beginTransaction().replace(R.id.content_frame, fragment).commit();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    // update selected item and title, then close the drawer
+                    Intent intent = new Intent(context, ConversationActivity.class);
+                    intent.putExtra("CONVID", conversations[0]);
+                    intent.putExtra("DISPNAME", conversations[1]);
+                    intent.putExtra("MSGPREV", conversations[2]);
+                    intent.putExtra("POSITION", i);
+                    startActivity(intent);
                     convList.setItemChecked(i, true);
-                    setTitle(convNames[i]);
                 }
             });
-        }
-    }
-
-    public static class ConversationFragment extends Fragment {
-        public static final String ARG_CONVO_NUMBER = "convo_number";
-
-        public ConversationFragment() {
-            // Empty constructor required for fragment subclasses
-        }
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,Bundle savedInstanceState) {
-            //String source = getArguments().getString(ARG_LIST_SAUCE);
-            int i = getArguments().getInt(ARG_CONVO_NUMBER);
-            String itemText = convNames[i];
-            View rootView = inflater.inflate(R.layout.other_fragment, container, false);
-            getActivity().setTitle(itemText);
-            return rootView;
-        }
-    }
-
-    private class Net extends AsyncTask<String, Void, String> {
-        private ProgressDialog dialog = new ProgressDialog(Globals.context);
-        @Override
-        protected void onPreExecute() {
-            loadSpinner.setVisibility(View.VISIBLE);
-        }
-        @Override
-        protected String doInBackground(String... params){
-            try {
-                return EntityUtils.toString(getResponse(params).getEntity());
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        private HttpResponse getResponse (String... params){
-            System.out.print("Sending data: ");
-            for (String i : params)
-                System.out.print(i+" ");
-            System.out.println("");
-            // Create a new HttpClient and Post Header
-            HttpClient httpclient = new DefaultHttpClient();
-            HttpPost httppost = new HttpPost(params[0]);
-            try {
-                // Add your data
-                int index = params.length;
-                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
-                nameValuePairs.add(new BasicNameValuePair("hash", params[1]));
-                httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-
-                // Execute HTTP Post Request
-                return httpclient.execute(httppost);
-
-
-            } catch (ClientProtocolException e) {
-                // TODO Auto-generated catch block
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-            }
-            return null;
-        }
-
-        protected void onPostExecute(String result) {
-            loadSpinner.setVisibility(View.GONE);
-            if (result != null) {
-                setArrays(result);
-            }
-            else {
-                Toast.makeText(Globals.context, "could not get response", Toast.LENGTH_SHORT).show();
-                retryButton.setVisibility(View.VISIBLE);
-            }
         }
     }
 }

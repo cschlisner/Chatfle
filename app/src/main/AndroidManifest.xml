@@ -31,6 +31,11 @@
             android:name="com.Group2.chatfle.app.SettingsActivity"
             android:label="@string/title_activity_settings" >
         </activity>
+        <activity
+            android:name="com.Group2.chatfle.app.ConversationActivity"
+            android:label="@string/title_activity_conversation"
+            android:parentActivityName=".HomeActivity">
+        </activity>
     </application>
 
     <!--

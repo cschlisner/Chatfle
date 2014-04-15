@@ -1,10 +1,6 @@
 package com.Group2.chatfle.app;
 
-import android.app.ProgressDialog;
-import android.content.Entity;
-import android.content.Intent;
 import android.os.AsyncTask;
-import android.widget.Toast;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -24,28 +20,57 @@ import java.util.List;
  * Created by Cole on 3/18/14.
  */
 public class Networking {
-    private HttpResponse response;
-    private String[] params;
-
-    public Networking(String... params) {
-        this.params = new String[params.length];
-        int j =0;
-        for (String i : params)
-            this.params[j++] = i;
+    public Networking(){
     }
 
-    public HttpResponse exec(){
-        return response;
-    }
+    public static void execute(final NetCallBack<Void, String> netMethod, String... params) {
+        class Net extends AsyncTask<String, Void, String> {
+            @Override
+            protected void onPreExecute() {
+                netMethod.callPre();
+            }
+            @Override
+            protected String doInBackground(String... params){
+                try {
+                    return EntityUtils.toString(getResponse(params).getEntity());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return null;
+                }
+            }
 
-    public void onSuccess(HttpResponse result){
-        try {
-            System.out.println("response is "+EntityUtils.toString(result.getEntity())+" @ Networking.onSuccess()");
-        } catch (IOException e) {
-            e.printStackTrace();
+            private HttpResponse getResponse (String... params){
+                System.out.print("Sending data: ");
+                for (String i : params)
+                    System.out.print(i+" ");
+                System.out.println("");
+                // Create a new HttpClient and Post Header
+                HttpClient httpclient = new DefaultHttpClient();
+                HttpPost httppost = new HttpPost(params[0]);
+                try {
+                    // Add your data
+                    int index = params.length;
+                    List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(params.length);
+                    for (int i=2; i<params.length-1; i+=2)
+                        nameValuePairs.add(new BasicNameValuePair(params[i-1], params[i]));
+                    httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+
+                    // Execute HTTP Post Request
+                    return httpclient.execute(httppost);
+
+
+                } catch (ClientProtocolException e) {
+                    // TODO Auto-generated catch block
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                }
+                return null;
+            }
+
+            protected void onPostExecute(String result) {
+                netMethod.callPost(result);
+            }
         }
-        response = result;
+        new Net().execute(params);
     }
-
-
 }
