@@ -96,6 +96,7 @@ public class HomeActivity extends ActionBarActivity {
         drawerLayout.setDrawerListener(drawerToggle);
         getActionBar().setDisplayHomeAsUpEnabled(true);
         getActionBar().setHomeButtonEnabled(true);
+        createListFrag();
     }
 
     @Override
@@ -117,7 +118,13 @@ public class HomeActivity extends ActionBarActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         // The action bar home/up action should open or close the drawer.
         // ActionBarDrawerToggle will take care of this.
-        return (drawerToggle.onOptionsItemSelected(item));
+        switch (item.getItemId()) {
+            case R.id.action_refresh:
+                refreshConvos();
+                return true;
+            default:
+                return drawerToggle.onOptionsItemSelected(item);
+        }
     }
 
     /* The click listner for ListView in the navigation drawer */
@@ -135,18 +142,22 @@ public class HomeActivity extends ActionBarActivity {
                 finish();
             }
             else {
-                // update the main content by replacing fragments
-                ContentFragment fragment = new ContentFragment();
-                FragmentManager fragmentManager = getFragmentManager();
-                fragmentManager.beginTransaction().replace(R.id.content_frame, fragment).commit();
-                convFrag = fragment;
-                // update selected item and title, then close the drawer
-                drawerList.setItemChecked(position, true);
-                setTitle(drawerItems[position]);
+                createListFrag();
             }
             drawerLayout.closeDrawer(drawerList);
 
         }
+    }
+
+    private void createListFrag(){
+        // update the main content by replacing fragments
+        ContentFragment fragment = new ContentFragment();
+        FragmentManager fragmentManager = getFragmentManager();
+        fragmentManager.beginTransaction().replace(R.id.content_frame, fragment).commit();
+        convFrag = fragment;
+        // update selected item and title, then close the drawer
+        drawerList.setItemChecked(0, true);
+        setTitle(drawerItems[0]);
     }
 
     @Override
@@ -185,9 +196,7 @@ public class HomeActivity extends ActionBarActivity {
 
     private void refreshConvos(){
         retryButton.setVisibility(View.GONE);
-        System.out.println("creds: "+ Globals.hash);
         Globals.context = this;
-
         Networking.execute(new NetCallBack<Void, String>() {
             @Override
             public Void callPre() {
@@ -202,22 +211,20 @@ public class HomeActivity extends ActionBarActivity {
                     setArrays(result);
                 }
                 else {
-                    Toast.makeText(Globals.context, "could not get response", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(Globals.context, "No response from server", Toast.LENGTH_SHORT).show();
                     retryButton.setVisibility(View.VISIBLE);
                 }
                 return null;
             }
-        }, "http://m.chatfle.com/get_convos", "hash", Globals.hash);
+        }, "http://m.chatfle.com/get_convos.php", "hash", Globals.hash);
     }
 
     private void setArrays(String response){
-        System.out.println("response: "+response);
         try {
             JSONObject jso = new JSONObject(response);
             JSONArray convos = jso.getJSONArray("convos");
             conversations = new String[3][convos.length()];
             for (int i = 0; i<convos.length(); ++i) {
-                System.out.print(".");
                 JSONObject o = convos.getJSONObject(i);
                 conversations[0][i] = o.getString("convo_id");
                 conversations[1][i] = o.getString("display_name");
@@ -225,7 +232,6 @@ public class HomeActivity extends ActionBarActivity {
             }
             convNames = new String[conversations[1].length];
             System.arraycopy(conversations[1], 0, convNames, 0, conversations[1].length);
-            System.out.println(conversations[0][0] + " " + conversations[1][0] + " " + conversations[2][0]);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -244,8 +250,14 @@ public class HomeActivity extends ActionBarActivity {
             View rootView = inflater.inflate(R.layout.fragment_conversationlist, container, false);
             loadSpinner = (ProgressBar) rootView.findViewById(R.id.loadingImg);
             retryButton = (Button) rootView.findViewById(R.id.retry_button);
-            refreshConvos();
+            retryButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    refreshConvos();
+                }
+            });
             getActivity().setTitle("Conversations");
+            refreshConvos();
             return rootView;
         }
 

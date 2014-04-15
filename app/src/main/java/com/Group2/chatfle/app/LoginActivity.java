@@ -19,11 +19,12 @@ import com.cengalabs.flatui.FlatUI;
 
 public class LoginActivity extends ActionBarActivity {
     EditText usrEmail, usrPswd;
+    SharedPreferences prefs;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        SharedPreferences sharedpreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        String h = sharedpreferences.getString("CREDENTIALS", "");
+        prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String h = prefs.getString("CREDENTIALS", "");
         if (!h.isEmpty()) {
             Globals.hash = h;
             startActivity(new Intent(this, HomeActivity.class));
@@ -70,6 +71,10 @@ public class LoginActivity extends ActionBarActivity {
                         dialog.dismiss();
                     }
                     if (result != null) {
+                        Globals.hash = result;
+                        SharedPreferences.Editor e = prefs.edit();
+                        e.putString("CREDENTIALS", result);
+                        e.commit();
                         startActivity(new Intent(getApplicationContext(), HomeActivity.class));
                         finish();
                         usrPswd.setText("");

@@ -20,45 +20,49 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 
-public class ConversationActivity extends Activity {
+public class ConversationActivity extends Activity{
 
-    /**
-     * The {@link android.support.v4.view.PagerAdapter} that will provide
-     * fragments for each of the sections. We use a
-     * {@link FragmentPagerAdapter} derivative, which will keep every
-     * loaded fragment in memory. If this becomes too memory intensive, it
-     * may be best to switch to a
-     * {@link android.support.v13.app.FragmentStatePagerAdapter}.
-     */
     SectionsPagerAdapter mSectionsPagerAdapter;
-
-    /**
-     * The {@link ViewPager} that will host the section contents.
-     */
     ViewPager mViewPager;
+    static String[][] conversations;
+    static String[][] messages;
     int currentConvo;
-    static String[][] conversationsInfo;
-    static String[] messages;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_conversation);
-        Intent i = getIntent();
-        conversationsInfo = new String [3][i.getStringArrayExtra("CONVID").length];
-        conversationsInfo[0] = i.getStringArrayExtra("CONVID");
-        conversationsInfo[1] = i.getStringArrayExtra("DISPNAME");
-        conversationsInfo[2] = i.getStringArrayExtra("MSGPREV");
-        currentConvo = i.getIntExtra("POSITION", 0);
-        // Create the adapter that will return a fragment for each of the three
-        // primary sections of the activity.
-        mSectionsPagerAdapter = new SectionsPagerAdapter(getFragmentManager());
+        Intent intent = getIntent();
+        conversations = new String[3][intent.getStringArrayExtra("CONVID").length];
+        conversations[0] = intent.getStringArrayExtra("CONVID");
+        conversations[1] = intent.getStringArrayExtra("DISPNAME");
+        conversations[2] = intent.getStringArrayExtra("MSGPREV");
+        currentConvo = intent.getIntExtra("POSITION", 0);
 
+        mSectionsPagerAdapter = new SectionsPagerAdapter(getFragmentManager());
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.pager);
         mViewPager.setAdapter(mSectionsPagerAdapter);
-
+        mViewPager.setOnPageChangeListener(new pageChange());
+        mViewPager.setCurrentItem(currentConvo);
+        setTitle(conversations[1][currentConvo]);
     }
 
+    class pageChange implements ViewPager.OnPageChangeListener {
+        public pageChange(){}
+        @Override
+        public void onPageSelected(int position) {
+            setTitle(conversations[1][position]);
+        }
+        @Override
+        public void onPageScrollStateChanged(int i){
+
+        }
+        @Override
+        public void onPageScrolled(int a, float b, int c){
+
+        }
+
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -94,54 +98,37 @@ public class ConversationActivity extends Activity {
 
         @Override
         public Fragment getItem(int position) {
-            // getItem is called to instantiate the fragment for the given page.
-            // Return a PlaceholderFragment (defined as a static inner class below).
-            return PlaceholderFragment.newInstance(position + 1);
+            return PlaceholderFragment.newInstance(position);
         }
 
         @Override
         public int getCount() {
             // Show 3 total pages.
-            return conversationsInfo[0].length;
+            return conversations[0].length;
         }
 
         @Override
         public CharSequence getPageTitle(int position) {
-            return conversationsInfo[1][position];
+            return conversations[1][position];
         }
     }
 
-    /**
-     * A placeholder fragment containing a simple view.
-     */
     public static class PlaceholderFragment extends Fragment {
-        /**
-         * The fragment argument representing the section number for this
-         * fragment.
-         */
-        private static final String ARG_DISP_NAME = "display_name";
-
-        /**
-         * Returns a new instance of this fragment for the given section
-         * number.
-         */
+        private static final String ARG_ONE = "section_number";
         public static PlaceholderFragment newInstance(int sectionNumber) {
             PlaceholderFragment fragment = new PlaceholderFragment();
             Bundle args = new Bundle();
-            args.putString(ARG_DISP_NAME, conversationsInfo[1][sectionNumber]);
+            args.putString(ARG_ONE, conversations[1][sectionNumber]);
             fragment.setArguments(args);
             return fragment;
         }
-
-        public PlaceholderFragment() {
-        }
-
+        public PlaceholderFragment() {       }
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_main2, container, false);
+            View rootView = inflater.inflate(R.layout.fragment_convo, container, false);
             TextView textView = (TextView) rootView.findViewById(R.id.section_label);
-            textView.setText(getArguments().getString(ARG_DISP_NAME));
+            textView.setText(getArguments().getString(ARG_ONE));
             return rootView;
         }
     }
