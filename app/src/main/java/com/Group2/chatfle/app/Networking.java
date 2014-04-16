@@ -71,7 +71,7 @@ public class Networking {
                 }
             }
             protected void onPostExecute(String result) {
-                String print = (result.length()>15)?(result.substring(0, 15)+"..."):result;
+                String print = (result.length()>40)?(result.substring(0, 40)+"..."):result;
                 System.out.println("Networking::Result: "+print);
                 netMethod.callPost((result.isEmpty())?null:result);
             }
