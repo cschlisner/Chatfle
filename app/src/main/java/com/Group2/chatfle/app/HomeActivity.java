@@ -59,11 +59,9 @@ public class HomeActivity extends ActionBarActivity {
     private ContentFragment convFrag;
     static private String[] drawerItems = new String[]{"Conversations", "Settings", "Logout"}; //placeholder
     static private String[][] conversations; // [0] = id, [1] = display_name, [2] = msg
-    static private String[] convNames;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_home);
         context = this;
         FlatUI.setDefaultTheme(FlatUI.DARK);
@@ -187,11 +185,7 @@ public class HomeActivity extends ActionBarActivity {
 
     @Override
     public void onBackPressed(){
-//        if (inConvo){
-//            drawerList.setSelection(0);
-//            drawerList.getAdapter().getView(0, null, null).performClick();
-//
-//        }
+        super.onBackPressed();
     }
 
     private void refreshConvos(){
@@ -230,8 +224,6 @@ public class HomeActivity extends ActionBarActivity {
                 conversations[1][i] = o.getString("display_name");
                 conversations[2][i] = o.getString("msg_preview");
             }
-            convNames = new String[conversations[1].length];
-            System.arraycopy(conversations[1], 0, convNames, 0, conversations[1].length);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -267,7 +259,7 @@ public class HomeActivity extends ActionBarActivity {
             } catch (NullPointerException e) {
                 e.printStackTrace();
             }
-            convList.setAdapter(new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, convNames));
+            convList.setAdapter(new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, conversations[1]));
             convList.getAdapter();
             convList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
