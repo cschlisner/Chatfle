@@ -23,6 +23,7 @@ public class LoginActivity extends ActionBarActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Globals.context = this;
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
         String h = prefs.getString("CREDENTIALS", "");
         if (!h.isEmpty()) {
@@ -34,10 +35,7 @@ public class LoginActivity extends ActionBarActivity {
         TextView title = (TextView) findViewById(R.id.title_view);
         title.setTypeface(Typeface.createFromAsset(getAssets(),"fonts/Pacifico.ttf"));
         usrEmail = (EditText) findViewById(R.id.email_text);
-        //Take this out
-        usrEmail.setText("testtest");
         usrPswd = (EditText) findViewById(R.id.password_text);
-        usrPswd.setText("123");
         ActionBar actionBar = getSupportActionBar();
         actionBar.hide();
         FlatUI.setDefaultTheme(FlatUI.DEEP);

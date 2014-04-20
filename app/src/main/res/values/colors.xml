@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="loginBG">@color/Black</color>
+    <color name="loginBG">@color/LightGrey</color>
     <color name="convoBG">@color/Black</color>
     <color name="White">#FFFFFF</color>
     <color name="Ivory">#FFFFF0</color>

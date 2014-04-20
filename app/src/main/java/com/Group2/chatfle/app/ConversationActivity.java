@@ -6,6 +6,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.Vector;
 
 import android.app.Activity;
@@ -52,11 +54,15 @@ public class ConversationActivity extends ActionBarActivity {
     static SectionsPagerAdapter mSectionsPagerAdapter;
     ViewPager mViewPager;
     Toast toast;
+    static boolean sendingMsg;
     static String[][] conversations;
     static ArrayList<String>[][] messages;
+    static ArrayList<String>[] newMsg = new ArrayList[4];
     EditText msgBox;
     ImageButton sendBtn;
     ProgressBar sndProgBar;
+    static TimerTask newMsgTimer;
+    static Timer timer = new Timer();
     static int currentConvo;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,7 +95,7 @@ public class ConversationActivity extends ActionBarActivity {
             @Override
             public void afterTextChanged(Editable editable) {
                 int chars = editable.length();
-                sendBtn.setVisibility((chars>0)?View.VISIBLE:View.GONE);
+                sendBtn.setVisibility((chars>0&&!sendingMsg)?View.VISIBLE:View.GONE);
             }
         });
         Intent intent = getIntent();
@@ -102,14 +108,27 @@ public class ConversationActivity extends ActionBarActivity {
         for (int i=0; i<messages.length; ++i)
             for (int j=0; j<messages[i].length; ++j)
                 messages[i][j] = new ArrayList<String>();
-        messages[0][0].add("please");
+        for (int i = 0; i < newMsg.length; ++i)
+            newMsg[i] = new ArrayList<String>();
         mSectionsPagerAdapter = new SectionsPagerAdapter(getFragmentManager());
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.pager);
+        mViewPager.setOffscreenPageLimit(2);
         mViewPager.setAdapter(mSectionsPagerAdapter);
         mViewPager.setOnPageChangeListener(new pageChange());
         mViewPager.setCurrentItem(currentConvo);
         setTitle(conversations[1][currentConvo]);
+
+        newMsgTimer = new TimerTask() {
+            @Override
+            public void run() {
+                if (!sendingMsg) {
+                    for (int i = 0; i < conversations[0].length; ++i) {
+                        checkNewMessage(mSectionsPagerAdapter.getFragmentAt(i));
+                    }
+                }
+            }
+        };
     }
 
     class pageChange implements ViewPager.OnPageChangeListener {
@@ -117,7 +136,8 @@ public class ConversationActivity extends ActionBarActivity {
         @Override
         public void onPageSelected(int position) {
             setTitle(conversations[1][position]);
-            System.out.println("in convo: " + position);
+            if (((InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE)).isAcceptingText())
+                Toast.makeText(Globals.context, mSectionsPagerAdapter.getPageTitle(position), Toast.LENGTH_SHORT).show();
             currentConvo = position;
             if (mSectionsPagerAdapter.getFragmentAt(position)!=null)
                 getMessages(mSectionsPagerAdapter.getFragmentAt(position), null, null);
@@ -139,8 +159,7 @@ public class ConversationActivity extends ActionBarActivity {
 
         @Override
         public Fragment getItem(int position) {
-            Fragment frag = PlaceholderFragment.newInstance(position);
-            return frag;
+            return PlaceholderFragment.newInstance(position);
         }
 
         @Override
@@ -160,20 +179,20 @@ public class ConversationActivity extends ActionBarActivity {
 
     private static void getMessages(final Fragment frag, final ListView lv, final ProgressBar pb){
         final int position = frag.getArguments().getInt("section_number");
-        System.out.println("frag "+position+" trying to getMessages()");
-        final ProgressBar loadSpinner = (pb==null)?((ProgressBar)frag.getView().findViewById(R.id.loadingImg)):pb;
         final ListView msgList = (lv==null)?((ListView) frag.getView().findViewById(R.id.messageList)):lv;
         final String convoId = conversations[0][position];
         Networking.execute(new NetCallBack<Void, String>() {
             @Override
             public Void callPre() {
-                loadSpinner.setVisibility(View.VISIBLE);
+                if (pb!=null)
+                    pb.setVisibility(View.VISIBLE);
                 return null;
             }
 
             @Override
             public Void callPost(String result) {
-                loadSpinner.setVisibility(View.GONE);
+                if (pb!=null)
+                    pb.setVisibility(View.GONE);
                 // handle JSON
                 try {
                     JSONObject jso = new JSONObject(result);
@@ -197,56 +216,86 @@ public class ConversationActivity extends ActionBarActivity {
         }, "http://m.chatfle.com/get_messages.php", "hash", Globals.hash, "convo_id", convoId);
     }
 
+    public static void checkNewMessage(final Fragment frag){
+        final int position = frag.getArguments().getInt("section_number");
+        final String convoId = conversations[0][position];
+        Networking.execute(new NetCallBack<Void, String>() {
+            @Override
+            public Void callPre() {
+                return null;
+            }
+
+            @Override
+            public Void callPost(String result) {
+                if (messages[position][0].size() > 0) {
+                    try {
+                        JSONObject jso = new JSONObject(result);
+                        JSONArray convos = jso.getJSONArray("messages");
+                        JSONObject o = convos.getJSONObject(0);
+                        newMsg[0].add(o.getString("display_name"));
+                        newMsg[1].add(o.getString("msg"));
+                        newMsg[2].add(o.getString("timestamp"));
+                        newMsg[3].add(o.getString("msg_sender"));
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    int yep = 0;
+                    for (int i = 0; i < 4; ++i) {
+                        if (newMsg[i].get(0).equals(messages[position][i].get(messages[position][i].size() - 1)))
+                            ++yep;
+                        newMsg[i].clear();
+                    }
+                    if (yep < 4)
+                        getMessages(mSectionsPagerAdapter.getFragmentAt(position), null, null);
+                }
+                return null;
+            }
+        }, "http://m.chatfle.com/new_messages.php", "hash", Globals.hash, "convo_id", convoId, "msg_count", "1");
+    }
+
     public void sendMessage(View v){
         int convo = mViewPager.getCurrentItem();
         final Fragment frag = mSectionsPagerAdapter.getFragmentAt(convo);
         final int fragPos = frag.getArguments().getInt("section_number");
         try {
             final String msg = msgBox.getText().toString();
+            Networking.execute(new NetCallBack<Void, String>() {
+                @Override
+                public Void callPre() {
+                    frag.getView().findViewById(R.id.frag_convo_layout).requestFocus();
+                    sndProgBar.setVisibility(View.VISIBLE);
+                    msgBox.requestFocus();
+                    sendingMsg = true;
+                    messages[fragPos][1].add(msg);
+                    messages[fragPos][3].add("1");
+                    ListView msgList = (ListView)frag.getView().findViewById(R.id.messageList);
+                    msgList.setAdapter(new ArrayAdapter<String>(Globals.context, android.R.layout.simple_list_item_1, messages[fragPos][1]));
+                    msgList.getAdapter();
+                    msgList.smoothScrollToPosition(messages[fragPos][0].size());
+                    return null;
+                }
 
-            if (!msg.isEmpty()) {
-                Networking.execute(new NetCallBack<Void, String>() {
-                    @Override
-                    public Void callPre() {
-                        frag.getView().findViewById(R.id.frag_convo_layout).requestFocus();
-                        sndProgBar.setVisibility(View.VISIBLE);
-                        msgBox.setClickable(false);
-                        msgBox.setEnabled(false);
-                        ((InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(msgBox.getWindowToken(), 0);
-                        messages[fragPos][1].add(msg);
-                        messages[fragPos][3].add("1");
+                @Override
+                public Void callPost(String result) {
+                    sndProgBar.setVisibility(View.GONE);
+                    sendingMsg = false;
+                    if (!msgBox.getText().toString().isEmpty())
+                        sendBtn.setVisibility(View.VISIBLE);
+                    if (result==null){
+                        messages[fragPos][1].remove(messages[fragPos][0].size());
+                        messages[fragPos][3].remove(messages[fragPos][0].size());
                         ListView msgList = (ListView)frag.getView().findViewById(R.id.messageList);
                         msgList.setAdapter(new ArrayAdapter<String>(Globals.context, android.R.layout.simple_list_item_1, messages[fragPos][1]));
                         msgList.getAdapter();
-                        msgList.smoothScrollToPosition(messages[fragPos][0].size());
-                        return null;
+                        msgList.smoothScrollToPosition(messages[fragPos][1].size());
+                        toast = Toast.makeText(Globals.context, "Could not send", Toast.LENGTH_SHORT);
+                        toast.show();
                     }
-
-                    @Override
-                    public Void callPost(String result) {
-                        sndProgBar.setVisibility(View.GONE);
-                        msgBox.setClickable(true);
-                        msgBox.setEnabled(true);
-                        if (result==null){
-                            messages[fragPos][1].remove(messages[fragPos][0].size());
-                            messages[fragPos][3].remove(messages[fragPos][0].size());
-                            ListView msgList = (ListView)frag.getView().findViewById(R.id.messageList);
-                            msgList.setAdapter(new ArrayAdapter<String>(Globals.context, android.R.layout.simple_list_item_1, messages[fragPos][1]));
-                            msgList.getAdapter();
-                            msgList.smoothScrollToPosition(messages[fragPos][1].size());
-                            toast = Toast.makeText(Globals.context, "Could not send", Toast.LENGTH_SHORT);
-                            toast.show();
-                        }
-                        return null;
-                    }
-                }, "http://m.chatfle.com/send_message.php", "hash", Globals.hash, "convo_id", conversations[0][convo], "message", msg);
-                msgBox.setText("");
-            } else {
-                if (toast.getView()!=null&&toast.getView().isShown())
-                    toast.setText("Nothing to send!");
-                else toast = Toast.makeText(this, "Nothing to send!", Toast.LENGTH_SHORT);
-                toast.show();
-            }
+                    return null;
+                }
+            }, "http://m.chatfle.com/send_message.php", "hash", Globals.hash, "convo_id", conversations[0][convo], "message", msg);
+            msgBox.setText("");
         } catch (NullPointerException e) {
             e.printStackTrace();
         }
@@ -275,8 +324,7 @@ public class ConversationActivity extends ActionBarActivity {
             progBar = (ProgressBar) rootView.findViewById(R.id.loadingImg);
             RelativeLayout myLayout = (RelativeLayout) rootView.findViewById(R.id.frag_convo_layout);
             myLayout.requestFocus();
-            if (currentConvo==convPos)
-                getMessages(this, msgList, progBar);
+            getMessages(this, msgList, progBar);
             return rootView;
         }
     }
@@ -286,6 +334,40 @@ public class ConversationActivity extends ActionBarActivity {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.conversation, menu);
         return true;
+    }
+
+    @Override
+    public boolean onNavigateUp() {
+        onBackPressed();
+        return super.onNavigateUp();
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        finish();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        timer.cancel();
+        timer.purge();
+        System.out.println("timer cancelled");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        timer = new Timer();
+        timer.schedule(newMsgTimer, 500, 4000);
+        System.out.println("timer scheduled");
+    }
+
+    @Override
+    public void finish() {
+        newMsgTimer.cancel();
+        super.finish();
     }
 
     @Override

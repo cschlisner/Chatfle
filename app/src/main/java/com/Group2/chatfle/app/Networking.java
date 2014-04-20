@@ -41,8 +41,8 @@ public class Networking {
             @Override
             protected String doInBackground(String... params){
                 HttpResponse response = getResponse(params);
-                if (response!=null)
-                    System.out.println("Networking::Response code: "+response.getStatusLine().getStatusCode());
+                //if (response!=null)
+//                    System.out.println("Networking::Response code: "+response.getStatusLine().getStatusCode());
                 try {
                      return EntityUtils.toString(response.getEntity());
                 } catch (NullPointerException e) {
@@ -58,10 +58,10 @@ public class Networking {
                 NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
                 NetworkInfo mData = connManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
                 if (mWifi.isConnected() || mData.isConnected()) {
-                    System.out.print("Networking::Sending data: ");
-                    for (String i : params)
-                        System.out.print(i + " ");
-                    System.out.println("");
+//                    System.out.print("Networking::Sending data: ");
+//                    for (String i : params)
+//                        System.out.print(i + " ");
+//                    System.out.println("");
                     final HttpParams httpParams = new BasicHttpParams();
                     HttpConnectionParams.setConnectionTimeout(httpParams, 10000);
                     HttpClient httpclient = new DefaultHttpClient(httpParams);
@@ -83,8 +83,8 @@ public class Networking {
             }
             protected void onPostExecute(String result) {
                 if (result!=null&&!result.isEmpty()&&!result.equals("ERROR")) {
-                    String print = (result.length()>100)?(result.substring(0, 100)+"..."):result;
-                    System.out.println("Networking::Result: "+print);
+//                    String print = (result.length()>100)?(result.substring(0, 100)+"..."):result;
+//                    System.out.println("Networking::Result: "+print);
                     netMethod.callPost(result);
                     return;
                 }
