@@ -54,7 +54,7 @@ public class ConversationActivity extends ActionBarActivity {
     static SectionsPagerAdapter mSectionsPagerAdapter;
     ViewPager mViewPager;
     Toast toast;
-    static boolean sendingMsg;
+    static boolean sendingMsg, checkNew;
     static String[][] conversations;
     static ArrayList<String>[][] messages;
     static ArrayList<String>[] newMsg = new ArrayList[4];
@@ -122,11 +122,10 @@ public class ConversationActivity extends ActionBarActivity {
         newMsgTimer = new TimerTask() {
             @Override
             public void run() {
-                if (!sendingMsg) {
-                    for (int i = 0; i < conversations[0].length; ++i) {
-                        checkNewMessage(mSectionsPagerAdapter.getFragmentAt(i));
-                    }
-                }
+            if (!sendingMsg&&!checkNew) {
+                checkNew = true;
+                checkNewMessage(mSectionsPagerAdapter.getFragmentAt(0));
+            }
             }
         };
     }
@@ -179,6 +178,7 @@ public class ConversationActivity extends ActionBarActivity {
 
     private static void getMessages(final Fragment frag, final ListView lv, final ProgressBar pb){
         final int position = frag.getArguments().getInt("section_number");
+        System.out.println("Getting Messages for convo "+position);
         final ListView msgList = (lv==null)?((ListView) frag.getView().findViewById(R.id.messageList)):lv;
         final String convoId = conversations[0][position];
         Networking.execute(new NetCallBack<Void, String>() {
@@ -222,11 +222,13 @@ public class ConversationActivity extends ActionBarActivity {
         Networking.execute(new NetCallBack<Void, String>() {
             @Override
             public Void callPre() {
+                System.out.println("callPre "+position);
                 return null;
             }
 
             @Override
             public Void callPost(String result) {
+                System.out.println("callPost "+position);
                 if (messages[position][0].size() > 0) {
                     try {
                         JSONObject jso = new JSONObject(result);
@@ -248,6 +250,9 @@ public class ConversationActivity extends ActionBarActivity {
                     }
                     if (yep < 4)
                         getMessages(mSectionsPagerAdapter.getFragmentAt(position), null, null);
+                    if (position<conversations[0].length-1)
+                        checkNewMessage(mSectionsPagerAdapter.getFragmentAt(position+1));
+                    else checkNew = false;
                 }
                 return null;
             }
