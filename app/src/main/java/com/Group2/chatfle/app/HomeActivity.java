@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.AsyncTask;
+import android.os.Parcelable;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.widget.DrawerLayout;
@@ -58,7 +59,7 @@ public class HomeActivity extends ActionBarActivity {
     private CharSequence title;
     private ContentFragment convFrag;
     static private String[] drawerItems = new String[]{"Conversations", "Settings", "Logout"}; //placeholder
-    static private String[][] conversations; // [0] = id, [1] = display_name, [2] = msg
+    static private Conversation[] conversations;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -218,12 +219,14 @@ public class HomeActivity extends ActionBarActivity {
         try {
             JSONObject jso = new JSONObject(response);
             JSONArray convos = jso.getJSONArray("convos");
-            conversations = new String[3][convos.length()];
+            conversations = new Conversation[convos.length()];
+            for (int i=0; i<conversations.length; ++i)
+                conversations[i] = new Conversation();
             for (int i = 0; i<convos.length(); ++i) {
                 JSONObject o = convos.getJSONObject(i);
-                conversations[0][i] = o.getString("convo_id");
-                conversations[1][i] = o.getString("display_name");
-                conversations[2][i] = o.getString("msg_preview");
+                conversations[i].convo_id = o.getString("convo_id");
+                conversations[i].display_name = o.getString("display_name");
+                conversations[i].msg_preview = o.getString("msg_preview");
             }
         } catch (JSONException e) {
             e.printStackTrace();
@@ -260,15 +263,25 @@ public class HomeActivity extends ActionBarActivity {
             } catch (NullPointerException e) {
                 e.printStackTrace();
             }
-            convList.setAdapter(new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, conversations[1]));
+            //TODO: make conversations list adapter
+            final ArrayList<String>[] convData = new ArrayList[3];
+            for (int i=0; i<convData.length; ++i)
+                convData[i] = new ArrayList<String>();
+            for (Conversation c : conversations){
+                convData[0].add(c.convo_id);
+                convData[1].add(c.display_name);
+                convData[2].add(c.msg_preview);
+            }
+
+            convList.setAdapter(new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, convData[1]));
             convList.getAdapter();
             convList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                     Intent intent = new Intent(context, ConversationActivity.class);
-                    intent.putExtra("CONVID", conversations[0]);
-                    intent.putExtra("DISPNAME", conversations[1]);
-                    intent.putExtra("MSGPREV", conversations[2]);
+                    intent.putExtra("CONVID", convData[0]);
+                    intent.putExtra("DISPNAME", convData[1]);
+                    intent.putExtra("MSGPREV", convData[2]);
                     intent.putExtra("POSITION", i);
                     startActivity(intent);
                     convList.setItemChecked(i, true);

@@ -2,6 +2,8 @@
 <resources>
     <color name="loginBG">@color/LightGrey</color>
     <color name="convoBG">@color/Black</color>
+    <color name="recmsg">@color/LightSkyBlue</color>
+    <color name="sndmsg">@color/GhostWhite</color>
     <color name="White">#FFFFFF</color>
     <color name="Ivory">#FFFFF0</color>
     <color name="LightYellow">#FFFFE0</color>
