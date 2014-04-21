@@ -32,11 +32,11 @@ public class MessageAdapter extends ArrayAdapter<Message> {
             if (msgContent != null){
                 msgContent.setText(i.msg);
             }
-            if (timeStamp != null){
+            if (timeStamp != null && i.timestamp != null){
                 long unixSeconds = Long.valueOf(i.timestamp);
                 Date date = new Date(unixSeconds*1000L); // *1000 is to convert seconds to milliseconds
-                SimpleDateFormat sdf = new SimpleDateFormat("HH:mm a"); // the format of your date
-                sdf.setTimeZone(TimeZone.getTimeZone("GMT-4"));
+                SimpleDateFormat sdf = new SimpleDateFormat("hh:mm a"); // the format of your date
+                sdf.setTimeZone(TimeZone.getDefault());
                 String formattedDate = sdf.format(date);
                 timeStamp.setText(formattedDate);
             }

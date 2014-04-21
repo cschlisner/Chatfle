@@ -16,6 +16,7 @@
     <LinearLayout
         android:id="@+id/msgBar"
         android:gravity="bottom"
+        android:background="@color/sndmsg"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
@@ -42,8 +43,7 @@
             android:id="@+id/sendButton"
             android:clickable="false"
             android:src="@drawable/ic_action_send_now"
-            android:background="#fff"
-            android:tint="@color/Black"
+            android:background="@color/sndmsg"
             android:onClick="sendMessage"
             android:visibility="gone"
             android:contentDescription="Send" />

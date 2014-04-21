@@ -13,7 +13,7 @@
         android:layout_centerInParent="true" />
     <ListView
         android:id="@+id/conversation_list"
-        android:dividerHeight="10dp"
+        android:dividerHeight="5dp"
         android:divider="@color/convListBG"
         android:background="@color/convListBG"
         android:layout_width="fill_parent"
