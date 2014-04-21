@@ -7,11 +7,13 @@
     android:focusable="true"
     android:focusableInTouchMode="true">
     <ListView
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:stackFromBottom="true"
         android:id="@+id/messageList"
-        android:background="@color/GhostWhite"
+        android:dividerHeight="0dp"
+        android:divider="@color/convoBG"
+        android:background="@color/convoBG"
         android:scrollbars="none"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="false"

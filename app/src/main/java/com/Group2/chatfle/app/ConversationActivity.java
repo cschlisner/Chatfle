@@ -6,7 +6,6 @@ import java.util.TimerTask;
 
 import android.app.Fragment;
 import android.app.FragmentManager;
-import android.content.Context;
 import android.content.Intent;
 import android.support.v13.app.FragmentPagerAdapter;
 import android.os.Bundle;
@@ -19,8 +18,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
@@ -93,7 +90,6 @@ public class ConversationActivity extends ActionBarActivity {
         convData[0].addAll(intent.getStringArrayListExtra("CONVID"));
         convData[1].addAll(intent.getStringArrayListExtra("DISPNAME"));
         convData[2].addAll(intent.getStringArrayListExtra("MSGPREV"));
-        System.out.println(convData[1].get(0));
         for (int i=0; i<conversations.length; ++i) {
             conversations[i].convo_id = convData[0].get(i);
             conversations[i].display_name = convData[1].get(i);
@@ -125,8 +121,9 @@ public class ConversationActivity extends ActionBarActivity {
         @Override
         public void onPageSelected(int position) {
             setTitle(conversations[position].display_name);
-            if (((InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE)).isAcceptingText())
-                Toast.makeText(Globals.context, mSectionsPagerAdapter.getPageTitle(position), Toast.LENGTH_SHORT).show();
+            //TODO: figure out how to detect keyboard state
+//            if (((InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE)).isAcceptingText())
+//                Toast.makeText(Globals.context, mSectionsPagerAdapter.getPageTitle(position), Toast.LENGTH_SHORT).show();
             currentConvo = position;
             if (mSectionsPagerAdapter.getFragmentAt(position)!=null)
                 getMessages(mSectionsPagerAdapter.getFragmentAt(position), null, null);
@@ -148,6 +145,12 @@ public class ConversationActivity extends ActionBarActivity {
 
         @Override
         public Fragment getItem(int position) {
+            if (position==conversations.length-1) {
+                stopChecking = false;
+                timer = new Timer();
+                timer.schedule(newMsgTimer, 500, 4000);
+                System.out.println("timer scheduled");
+            }
             return PlaceholderFragment.newInstance(position);
         }
 
@@ -332,25 +335,25 @@ public class ConversationActivity extends ActionBarActivity {
 
     @Override
     protected void onPause() {
-        super.onPause();
+        newMsgTimer.cancel();
         timer.cancel();
         timer.purge();
         stopChecking = true;
         System.out.println("timer cancelled");
+        super.onPause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        stopChecking = false;
-        timer = new Timer();
-        timer.schedule(newMsgTimer, 500, 4000);
-        System.out.println("timer scheduled");
     }
+
 
     @Override
     public void finish() {
         newMsgTimer.cancel();
+        timer.cancel();
+        timer.purge();
         stopChecking = true;
         super.finish();
     }

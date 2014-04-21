@@ -59,7 +59,7 @@ public class HomeActivity extends ActionBarActivity {
     private CharSequence title;
     private ContentFragment convFrag;
     static private String[] drawerItems = new String[]{"Conversations", "Settings", "Logout"}; //placeholder
-    static private Conversation[] conversations;
+    static private ArrayList<Conversation> conversations = new ArrayList<Conversation>();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -204,7 +204,22 @@ public class HomeActivity extends ActionBarActivity {
             public Void callPost(String result) {
                 loadSpinner.setVisibility(View.GONE);
                 if (result != null) {
-                    setArrays(result);
+                    try {
+                        JSONObject jso = new JSONObject(result);
+                        JSONArray convos = jso.getJSONArray("convos");
+                        conversations = new ArrayList<Conversation>();
+                        for (int i = 0; i<convos.length(); ++i) {
+                            JSONObject o = convos.getJSONObject(i);
+                            Conversation tmpConvo = new Conversation();
+                            tmpConvo.convo_id = o.getString("convo_id");
+                            tmpConvo.display_name = o.getString("display_name");
+                            tmpConvo.msg_preview = o.getString("msg_preview");
+                            conversations.add(tmpConvo);
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    convFrag.createList();
                 }
                 else {
                     Toast.makeText(Globals.context, "No response from server", Toast.LENGTH_SHORT).show();
@@ -213,25 +228,6 @@ public class HomeActivity extends ActionBarActivity {
                 return null;
             }
         }, "http://m.chatfle.com/get_convos.php", "hash", Globals.hash);
-    }
-
-    private void setArrays(String response){
-        try {
-            JSONObject jso = new JSONObject(response);
-            JSONArray convos = jso.getJSONArray("convos");
-            conversations = new Conversation[convos.length()];
-            for (int i=0; i<conversations.length; ++i)
-                conversations[i] = new Conversation();
-            for (int i = 0; i<convos.length(); ++i) {
-                JSONObject o = convos.getJSONObject(i);
-                conversations[i].convo_id = o.getString("convo_id");
-                conversations[i].display_name = o.getString("display_name");
-                conversations[i].msg_preview = o.getString("msg_preview");
-            }
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        convFrag.createList();
     }
 
     /**
@@ -264,20 +260,20 @@ public class HomeActivity extends ActionBarActivity {
                 e.printStackTrace();
             }
             //TODO: make conversations list adapter
-            final ArrayList<String>[] convData = new ArrayList[3];
-            for (int i=0; i<convData.length; ++i)
-                convData[i] = new ArrayList<String>();
-            for (Conversation c : conversations){
-                convData[0].add(c.convo_id);
-                convData[1].add(c.display_name);
-                convData[2].add(c.msg_preview);
-            }
 
-            convList.setAdapter(new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, convData[1]));
+            convList.setAdapter(new ConversationAdapter(context, android.R.layout.simple_list_item_1, conversations));
             convList.getAdapter();
             convList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                    final ArrayList<String>[] convData = new ArrayList[3];
+                    for (int q=0; q<convData.length; ++q)
+                        convData[q] = new ArrayList<String>();
+                    for (Conversation c : conversations){
+                        convData[0].add(c.convo_id);
+                        convData[1].add(c.display_name);
+                        convData[2].add(c.msg_preview);
+                    }
                     Intent intent = new Intent(context, ConversationActivity.class);
                     intent.putExtra("CONVID", convData[0]);
                     intent.putExtra("DISPNAME", convData[1]);

@@ -1,5 +1,8 @@
 package com.Group2.chatfle.app;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.TimeZone;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -16,12 +19,8 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         this.messages = messages;
     }
     public View getView(int position, View convertView, ViewGroup parent){
-
-        // assign the view we are converting to a local variable
         View v = convertView;
         Message i = messages.get(position);
-        // first check to see if the view is null. if so, we have to inflate it.
-        // to inflate it basically means to render, or show, the view.
         if (v == null) {
             LayoutInflater inflater = (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             v = inflater.inflate((i.msg_sender.equals("0"))?R.layout.recmsg_list_row:R.layout.sndmsg_list_row, null);
@@ -34,10 +33,14 @@ public class MessageAdapter extends ArrayAdapter<Message> {
                 msgContent.setText(i.msg);
             }
             if (timeStamp != null){
-                timeStamp.setText(i.timestamp);
+                long unixSeconds = Long.valueOf(i.timestamp);
+                Date date = new Date(unixSeconds*1000L); // *1000 is to convert seconds to milliseconds
+                SimpleDateFormat sdf = new SimpleDateFormat("HH:mm a"); // the format of your date
+                sdf.setTimeZone(TimeZone.getTimeZone("GMT-4"));
+                String formattedDate = sdf.format(date);
+                timeStamp.setText(formattedDate);
             }
         }
-        // the view must be returned to our activity
         return v;
 
     }

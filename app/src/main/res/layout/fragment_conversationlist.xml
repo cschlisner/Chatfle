@@ -11,10 +11,13 @@
         android:contentDescription=""
         android:layout_gravity="center"
         android:layout_centerInParent="true" />
-        <ListView
-            android:id="@+id/conversation_list"
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent"/>
+    <ListView
+        android:id="@+id/conversation_list"
+        android:dividerHeight="10dp"
+        android:divider="@color/convListBG"
+        android:background="@color/convListBG"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"/>
 
     <com.cengalabs.flatui.views.FlatButton
         android:id="@+id/retry_button"

@@ -18,7 +18,6 @@
         android:gravity="bottom"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="@dimen/activity_vertical_margin"
         android:layout_alignParentBottom="true"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true">
@@ -30,7 +29,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:id="@+id/messageBox"
-            flatui:theme="Sky"
+            flatui:theme="Grass"
             flatui:textAppearance="dark"
             flatui:fieldStyle="box"
             flatui:cornerRadius="3dip"
@@ -43,9 +42,10 @@
             android:id="@+id/sendButton"
             android:clickable="false"
             android:src="@drawable/ic_action_send_now"
+            android:background="#fff"
+            android:tint="@color/Black"
             android:onClick="sendMessage"
             android:visibility="gone"
-            android:background="@color/convoBG"
             android:contentDescription="Send" />
 
         <ProgressBar

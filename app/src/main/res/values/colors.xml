@@ -1,14 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="loginBG">@color/LightGrey</color>
-    <color name="convoBG">@color/Black</color>
-    <color name="recmsg">@color/LightSkyBlue</color>
-    <color name="sndmsg">@color/GhostWhite</color>
+    // Color settings
+    <color name="loginBG">@color/GhostWhite</color>     //login page bg
+    <color name="convoBG">@color/GhostWhite</color>     //conversation bg
+    <color name="convListBG">@color/GhostWhite</color>  //conversation list bg
+
+    <color name="recmsg">@color/Deep</color>        //recieved msg bubble color
+    <color name="recmsgtxt">@color/Snow</color>
+    <color name="sndmsg">@color/Grass</color>       //sent msg bubble color
+    <color name="sndmsgtxt">@color/Snow</color>
+    <color name="conv">@color/Sea</color>           //conversation list bubble color
+    <color name="convtxt">@color/White</color>
+
+    // Flat UI
+    <color name="Sky">#13b7d2</color>
+    <color name="Grass">#2ab081</color>
+    <color name="Sea">#2d72d9</color>
+    <color name="Blood">#d94130</color>
+    <color name="Deep">#455569</color>
+    <color name="Dark">#454545</color>
+    <color name="Snow">#e8e8e8</color>
+
+    // Other
     <color name="White">#FFFFFF</color>
     <color name="Ivory">#FFFFF0</color>
     <color name="LightYellow">#FFFFE0</color>
     <color name="Yellow">#FFFF00</color>
-    <color name="Snow">#FFFAFA</color>
     <color name="FloralWhite">#FFFAF0</color>
     <color name="LemonChiffon">#FFFACD</color>
     <color name="Cornsilk">#FFF8DC</color>
