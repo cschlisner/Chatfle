@@ -23,8 +23,19 @@
         android:layout_marginEnd="5dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Timestamp"
+        android:text="..."
         android:textColor="@color/Snow"
+        android:textSize="10dip"
+        android:textStyle="italic"/>
+    <TextView
+        android:id="@+id/sender"
+        android:layout_below="@id/message_content"
+        android:layout_toLeftOf="@id/timestamp"
+        android:layout_marginEnd="5dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Sender"
+        android:textColor="@color/Blood"
         android:textSize="10dip"
         android:textStyle="italic"/>
 </RelativeLayout>

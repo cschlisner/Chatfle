@@ -5,7 +5,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:padding="5dip"
-    android:background="@drawable/convlist">
+    android:background="@drawable/convselector">
     <TextView
         android:id="@+id/display_name"
         android:layout_width="wrap_content"

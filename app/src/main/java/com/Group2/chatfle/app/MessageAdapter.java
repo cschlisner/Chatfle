@@ -23,22 +23,29 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         Message i = messages.get(position);
         if (v == null) {
             LayoutInflater inflater = (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            v = inflater.inflate((i.msg_sender.equals("0"))?R.layout.recmsg_list_row:R.layout.sndmsg_list_row, null);
+            int lo = (i.msg_sender.equals("1"))?R.layout.sndmsg_list_row:R.layout.recmsg_list_row;
+            v = inflater.inflate(lo, null);
         }
         if (i != null) {
             TextView msgContent = (TextView) v.findViewById(R.id.message_content);
             TextView timeStamp = (TextView) v.findViewById(R.id.timestamp);
-
+            TextView sender = (TextView) v.findViewById(R.id.sender);
             if (msgContent != null){
                 msgContent.setText(i.msg);
             }
+            if (sender != null)
+                sender.setText(i.msg_sender);
             if (timeStamp != null && i.timestamp != null){
-                long unixSeconds = Long.valueOf(i.timestamp);
-                Date date = new Date(unixSeconds*1000L); // *1000 is to convert seconds to milliseconds
-                SimpleDateFormat sdf = new SimpleDateFormat("hh:mm a"); // the format of your date
-                sdf.setTimeZone(TimeZone.getDefault());
-                String formattedDate = sdf.format(date);
-                timeStamp.setText(formattedDate);
+                if (i.timestamp.equals("Just Now"))
+                    timeStamp.setText(i.timestamp);
+                else {
+                    long unixSeconds = Long.valueOf(i.timestamp);
+                    Date date = new Date(unixSeconds * 1000L);
+                    SimpleDateFormat sdf = new SimpleDateFormat("hh:mm a");
+                    sdf.setTimeZone(TimeZone.getDefault());
+                    String formattedDate = sdf.format(date);
+                    timeStamp.setText(formattedDate);
+                }
             }
         }
         return v;
