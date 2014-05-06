@@ -22,19 +22,18 @@
         android:layout_alignParentBottom="true"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true">
-        <com.cengalabs.flatui.views.FlatEditText
+        <EditText
             android:hint="Send a message..."
             android:gravity="bottom"
-            android:inputType="textAutoCorrect|textCapSentences|textMultiLine"
+            android:textColor="@color/sndmsgtxt"
+            android:inputType="textAutoCorrect|textCapSentences|text"
+            android:imeOptions="actionSend"
             android:layout_gravity="left"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:id="@+id/messageBox"
-            flatui:theme="Grass"
-            flatui:textAppearance="dark"
-            flatui:fieldStyle="box"
-            flatui:cornerRadius="3dip"
-            android:layout_weight="1" />
+            android:layout_weight="1"
+            android:shadowColor="@color/Deep" />
 
         <ImageButton
             android:layout_gravity="right"

@@ -2,14 +2,16 @@ package com.Group2.chatfle.app;
 import java.util.ArrayList;
 
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 public class ConversationAdapter extends ArrayAdapter<Conversation> {
-
     private ArrayList<Conversation> Conversations;
     public ConversationAdapter(Context context, int textViewResourceId, ArrayList<Conversation> Conversations) {
         super(context, textViewResourceId, Conversations);
@@ -26,6 +28,8 @@ public class ConversationAdapter extends ArrayAdapter<Conversation> {
             LayoutInflater inflater = (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             v = inflater.inflate(R.layout.conv_list_row, null);
         }
+        if (position%2==0)
+            v.findViewById(R.id.relative_layout).setBackground(Globals.context.getResources().getDrawable(R.drawable.altconvselector));
         if (i != null) {
             TextView dispName = (TextView) v.findViewById(R.id.display_name);
             TextView msgPrev = (TextView) v.findViewById(R.id.msg_preview);

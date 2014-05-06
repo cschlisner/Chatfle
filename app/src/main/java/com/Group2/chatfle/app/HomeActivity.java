@@ -1,12 +1,15 @@
 package com.Group2.chatfle.app;
 
+import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.os.AsyncTask;
 import android.os.Parcelable;
 import android.preference.PreferenceManager;
@@ -14,6 +17,7 @@ import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.telephony.gsm.GsmCellLocation;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -23,6 +27,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -122,6 +127,9 @@ public class HomeActivity extends ActionBarActivity {
             case R.id.action_refresh:
                 refreshConvos();
                 return true;
+            case R.id.action_createConv:
+                newConvo();
+                return true;
             default:
                 return drawerToggle.onOptionsItemSelected(item);
         }
@@ -210,10 +218,10 @@ public class HomeActivity extends ActionBarActivity {
                         conversations = new ArrayList<Conversation>();
                         for (int i = 0; i<convos.length(); ++i) {
                             JSONObject o = convos.getJSONObject(i);
-                            Conversation tmpConvo = new Conversation();
-                            tmpConvo.convo_id = o.getString("convo_id");
-                            tmpConvo.display_name = o.getString("display_name");
-                            tmpConvo.msg_preview = o.getString("msg_preview");
+                            Conversation tmpConvo = new Conversation(o.getString("convo_id"),
+                                                                     o.getString("display_name"),
+                                                                     o.getString("their_user"),
+                                                                     o.getString("msg_preview"));
                             conversations.add(tmpConvo);
                         }
                     } catch (JSONException e) {
@@ -228,6 +236,54 @@ public class HomeActivity extends ActionBarActivity {
                 return null;
             }
         }, "http://m.chatfle.com/get_convos.php", "hash", Globals.hash);
+    }
+
+    private void newConvo(){
+        AlertDialog.Builder alert = new AlertDialog.Builder(this);
+        alert.setTitle("New Conversation");
+        alert.setMessage("Enter Username:");
+        alert.setInverseBackgroundForced(true);
+        final EditText input = new EditText(this);
+        alert.setView(input);
+        alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                final String value = input.getText().toString();
+                boolean inConvo = false;
+                for (Conversation convo : conversations){
+                    if ((convo.their_user.toLowerCase()).equals(value.toLowerCase())) {
+                        inConvo = true;
+                        Toast.makeText(Globals.context, "Already in a conversation!", Toast.LENGTH_SHORT).show();
+                        break;
+                    }
+                }
+                if (!inConvo) {
+                    Networking.execute(new NetCallBack<Void, String>() {
+                        @Override
+                        public Void callPre() {
+                            return null;
+                        }
+
+                        @Override
+                        public Void callPost(String result) {
+                            if (result != null) {
+                                Conversation newConv = new Conversation("", "", value, "");
+                                conversations.add(newConv);
+                                enterConvos(conversations.size() - 1);
+                            }
+                            else Toast.makeText(Globals.context, "User does not exist", Toast.LENGTH_SHORT).show();
+                            return null;
+                        }
+                    }, "http://m.chatfle.com/user_exist.php", "user", value);
+                }
+            }
+        });
+
+        alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                // Canceled.
+            }
+        });
+        alert.show();
     }
 
     /**
@@ -263,26 +319,31 @@ public class HomeActivity extends ActionBarActivity {
 
             convList.setAdapter(new ConversationAdapter(context, android.R.layout.simple_list_item_1, conversations));
             convList.getAdapter();
+
             convList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                    final ArrayList<String>[] convData = new ArrayList[3];
-                    for (int q=0; q<convData.length; ++q)
-                        convData[q] = new ArrayList<String>();
-                    for (Conversation c : conversations){
-                        convData[0].add(c.convo_id);
-                        convData[1].add(c.display_name);
-                        convData[2].add(c.msg_preview);
-                    }
-                    Intent intent = new Intent(context, ConversationActivity.class);
-                    intent.putExtra("CONVID", convData[0]);
-                    intent.putExtra("DISPNAME", convData[1]);
-                    intent.putExtra("MSGPREV", convData[2]);
-                    intent.putExtra("POSITION", i);
-                    startActivity(intent);
-                    convList.setItemChecked(i, true);
+                    enterConvos(i);
                 }
             });
         }
+    }
+
+    private void enterConvos(int i){
+        final ArrayList<String>[] convData = new ArrayList[3];
+        for (int q=0; q<convData.length; ++q)
+            convData[q] = new ArrayList<String>();
+        for (Conversation c : conversations){
+            convData[0].add(c.convo_id);
+            convData[1].add(c.display_name);
+            convData[2].add(c.msg_preview);
+        }
+        Intent intent = new Intent(context, ConversationActivity.class);
+        intent.putExtra("CONVID", convData[0]);
+        intent.putExtra("DISPNAME", convData[1]);
+        intent.putExtra("MSGPREV", convData[2]);
+        intent.putExtra("POSITION", i);
+        startActivity(intent);
+        convList.setItemChecked(i, true);
     }
 }

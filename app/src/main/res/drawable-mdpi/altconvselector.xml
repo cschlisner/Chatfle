@@ -3,12 +3,12 @@
     <item
         android:state_selected="false"
         android:state_pressed="false"
-        android:drawable="@color/conv" />
+        android:drawable="@color/altconv" />
 
     <item android:state_pressed="true"
-        android:drawable="@color/altconv" />
+        android:drawable="@color/conv" />
 
     <item android:state_selected="true"
         android:state_pressed="false"
-        android:drawable="@color/altconv" />
+        android:drawable="@color/conv" />
 </selector>

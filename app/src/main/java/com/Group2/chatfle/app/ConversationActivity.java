@@ -3,26 +3,35 @@ package com.Group2.chatfle.app;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.Preferences;
 
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.support.v13.app.FragmentPagerAdapter;
 import android.os.Bundle;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBarActivity;
+import android.telephony.gsm.GsmCellLocation;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.cengalabs.flatui.FlatUI;
@@ -33,19 +42,17 @@ import org.json.JSONObject;
 
 
 public class ConversationActivity extends ActionBarActivity {
-
     static SectionsPagerAdapter mSectionsPagerAdapter;
     ViewPager mViewPager;
     Toast toast;
     static boolean sendingMsg, checkNew, stopChecking;
     static Conversation conversations[];
-    static Message tmpMsg = new Message(); // for checking & retrieving new messages
     EditText msgBox;
     ImageButton sendBtn;
     ProgressBar sndProgBar;
     static TimerTask newMsgTimer;
     static Timer timer = new Timer();
-    static int currentConvo, gettingMsgs;
+    static int currentConvo, gettingMsgs, checkingMsgs;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,7 +62,6 @@ public class ConversationActivity extends ActionBarActivity {
         FlatUI.setActionBarTheme(this, FlatUI.DARK, true, true);
         getActionBar().setDisplayHomeAsUpEnabled(true);
         getActionBar().setHomeButtonEnabled(true);
-
         sendBtn = (ImageButton) findViewById(R.id.sendButton);
         sndProgBar = (ProgressBar) findViewById(R.id.progBar);
         sendBtn.setOnClickListener(new View.OnClickListener() {
@@ -78,6 +84,17 @@ public class ConversationActivity extends ActionBarActivity {
             public void afterTextChanged(Editable editable) {
                 int chars = editable.length();
                 sendBtn.setVisibility((chars>0&&!sendingMsg)?View.VISIBLE:View.GONE);
+            }
+        });
+        msgBox.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                boolean handled = false;
+                if (actionId == EditorInfo.IME_ACTION_SEND) {
+                    sendBtn.performClick();
+                    handled = true;
+                }
+                return handled;
             }
         });
         Intent intent = getIntent();
@@ -110,7 +127,8 @@ public class ConversationActivity extends ActionBarActivity {
             public void run() {
             if (!sendingMsg&&!checkNew) {
                 checkNew = true;
-                checkNewMessage(mSectionsPagerAdapter.getFragmentAt((currentConvo>0)?currentConvo-1:currentConvo));
+                for (int i=(currentConvo>0)?currentConvo-1:currentConvo; i<=((currentConvo+1<conversations.length)?currentConvo+1:currentConvo); ++i)
+                    checkNewMessage(i);
             }
             }
         };
@@ -121,12 +139,11 @@ public class ConversationActivity extends ActionBarActivity {
         @Override
         public void onPageSelected(int position) {
             setTitle(conversations[position].display_name);
-            //TODO: figure out how to detect keyboard state
-//            if (((InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE)).isAcceptingText())
-//                Toast.makeText(Globals.context, mSectionsPagerAdapter.getPageTitle(position), Toast.LENGTH_SHORT).show();
             currentConvo = position;
             if (mSectionsPagerAdapter.getFragmentAt(position)!=null)
                 getMessages(mSectionsPagerAdapter.getFragmentAt(position), null, null);
+            if (conversations[currentConvo].hasNew)
+                readMessages(currentConvo);
         }
         @Override
         public void onPageScrollStateChanged(int i){
@@ -145,10 +162,10 @@ public class ConversationActivity extends ActionBarActivity {
 
         @Override
         public Fragment getItem(int position) {
-            if (position==conversations.length-1) {
+            if (position==((currentConvo<conversations.length-1)?currentConvo+1:currentConvo)) {
                 stopChecking = false;
                 timer = new Timer();
-                timer.schedule(newMsgTimer, 500, 4000);
+                timer.schedule(newMsgTimer, 4000, 1000);
                 System.out.println("timer scheduled");
             }
             return PlaceholderFragment.newInstance(position);
@@ -170,11 +187,10 @@ public class ConversationActivity extends ActionBarActivity {
     }
 
     private static void getMessages(final Fragment frag, final ListView lv, final ProgressBar pb){
-        final int position = frag.getArguments().getInt("section_number");
-        System.out.println("Getting Messages for convo "+position);
-        final ListView msgList = (lv==null)?((ListView) frag.getView().findViewById(R.id.messageList)):lv;
-        final String convoId = conversations[position].convo_id;
         if (gettingMsgs < 4) {
+            final int position = frag.getArguments().getInt("section_number");
+            final ListView msgList = (lv==null)?((ListView) frag.getView().findViewById(R.id.messageList)):lv;
+            final String convoId = conversations[position].convo_id;
             Networking.execute(new NetCallBack<Void, String>() {
                 @Override
                 public Void callPre() {
@@ -190,23 +206,27 @@ public class ConversationActivity extends ActionBarActivity {
                     if (pb != null)
                         pb.setVisibility(View.GONE);
                     // handle JSON
-                    try {
-                        JSONObject jso = new JSONObject(result);
-                        JSONArray messages = jso.getJSONArray("messages");
-                        conversations[position].msgList.clear();
-                        for (int i = 0; i < messages.length(); ++i) {
-                            JSONObject o = messages.getJSONObject(i);
-                            tmpMsg = new Message();
-                            tmpMsg.display_name = o.getString("display_name");
-                            tmpMsg.msg = o.getString("msg");
-                            tmpMsg.timestamp = o.getString("timestamp");
-                            tmpMsg.msg_sender = o.getString("msg_sender");
-                            conversations[position].msgList.add(tmpMsg);
+                    if (result != null) {
+                        try {
+                            JSONObject jso = new JSONObject(result);
+                            JSONArray messages = jso.getJSONArray("messages");
+                            conversations[position].msgList.clear();
+                            if (messages.length()>0) {
+                                for (int i = 0; i < messages.length(); ++i) {
+                                    JSONObject o = messages.getJSONObject(i);
+                                    Message m = new Message(o.getString("display_name"),
+                                                            o.getString("msg"),
+                                                            o.getString("timestamp"),
+                                                            o.getString("msg_sender"));
+                                    conversations[position].msgList.add(m);
+                                }
+                            }
+                            else Toast.makeText(Globals.context, "Send a message to get started", Toast.LENGTH_SHORT);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
                         }
-                    } catch (JSONException e) {
-                        e.printStackTrace();
                     }
-                    msgList.setAdapter(new MessageAdapter(Globals.context, android.R.layout.simple_list_item_1, conversations[position].msgList));
+                    msgList.setAdapter(new MessageAdapter(Globals.context, android.R.layout.simple_list_item_1, conversations[position]));
                     msgList.getAdapter();
                     return null;
                 }
@@ -214,42 +234,55 @@ public class ConversationActivity extends ActionBarActivity {
         }
     }
 
-    public static void checkNewMessage(final Fragment frag){
-        final int position = frag.getArguments().getInt("section_number");
-        final String convoId = conversations[position].convo_id;
-        Networking.execute(new NetCallBack<Void, String>() {
-            @Override
-            public Void callPre() {
-                System.out.println("checking new messages "+position);
-                return null;
-            }
-            @Override
-            public Void callPost(String result) {
-                if (conversations[position].msgList.size() > 0) {
-                    try {
-                        JSONObject jso = new JSONObject(result);
-                        JSONArray convos = jso.getJSONArray("messages");
-                        JSONObject o = convos.getJSONObject(0);
-                        //tmpMsg = new Message();
-                        tmpMsg.timestamp = o.getString("timestamp");
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                    if (!tmpMsg.timestamp.equals(conversations[position].msgList.get(conversations[position].msgList.size()-1).timestamp))
-                        getMessages(mSectionsPagerAdapter.getFragmentAt(position), null, null);
-                    if (position<=currentConvo+1 && !stopChecking && !sendingMsg && mSectionsPagerAdapter.getFragmentAt(position+1)!=null)
-                        checkNewMessage(mSectionsPagerAdapter.getFragmentAt(position+1));
-                    else checkNew = false;
-                }
-                return null;
-            }
-        }, "http://m.chatfle.com/new_messages.php", "hash", Globals.hash, "convo_id", convoId, "msg_count", "1");
+    public static void checkNewMessage(final int i){
+        if (checkingMsgs<4) {
+           final Fragment frag = mSectionsPagerAdapter.getFragmentAt(i);
+           final ListView msgList = (ListView) frag.getView().findViewById(R.id.messageList);
+           final int position = frag.getArguments().getInt("section_number");
+           final String convoId = conversations[position].convo_id;
+           Networking.execute(new NetCallBack<Void, String>() {
+               @Override
+               public Void callPre() {
+                   ++checkingMsgs;
+                   return null;
+               }
+
+               @Override
+               public Void callPost(String result) {
+                   --checkingMsgs;
+                   if (result != null) {
+                       conversations[currentConvo].hasNew = (i != currentConvo);
+                       if (conversations[currentConvo].hasNew == false) readMessages(i);
+                       try {
+                           JSONObject jso = new JSONObject(result);
+                           JSONArray messages = jso.getJSONArray("messages");
+                           for (int i = 0; i < messages.length(); ++i) {
+                               JSONObject o = messages.getJSONObject(i);
+                               Message m = new Message(o.getString("display_name"),
+                                       o.getString("msg"),
+                                       o.getString("timestamp"),
+                                       o.getString("msg_sender"));
+                               conversations[position].msgList.add(m);
+                           }
+                       } catch (JSONException e) {
+                           e.printStackTrace();
+                       }
+                       msgList.setAdapter(new MessageAdapter(Globals.context, android.R.layout.simple_list_item_1, conversations[position]));
+                       msgList.getAdapter();
+                   }
+                   if (position == ((currentConvo+1<conversations.length)?currentConvo+1:currentConvo))
+                       checkNew = false;
+                   return null;
+               }
+           }, "http://m.chatfle.com/get_new.php", "hash", Globals.hash, "convo_id", convoId);
+       }
     }
 
     public void sendMessage(View v){
         int convo = mViewPager.getCurrentItem();
         final Fragment frag = mSectionsPagerAdapter.getFragmentAt(convo);
         final int fragPos = frag.getArguments().getInt("section_number");
+        final boolean isNewConvo = (conversations[convo].msgList.size()<1);
         try {
             final String msg = msgBox.getText().toString();
             Networking.execute(new NetCallBack<Void, String>() {
@@ -259,13 +292,9 @@ public class ConversationActivity extends ActionBarActivity {
                     sndProgBar.setVisibility(View.VISIBLE);
                     msgBox.requestFocus();
                     sendingMsg = true;
-                    tmpMsg = new Message();
-                    tmpMsg.msg = msg;
-                    tmpMsg.msg_sender = "1";
-                    tmpMsg.timestamp = "Just Now";
-                    conversations[fragPos].msgList.add(tmpMsg);
-                    ListView msgList = (ListView)frag.getView().findViewById(R.id.messageList);
-                    msgList.setAdapter(new MessageAdapter(Globals.context, android.R.layout.simple_list_item_1, conversations[fragPos].msgList));
+                    conversations[fragPos].msgList.add(new Message(null, msg, "Just Now", "1"));
+                    ListView msgList = (ListView) frag.getView().findViewById(R.id.messageList);
+                    msgList.setAdapter(new MessageAdapter(Globals.context, android.R.layout.simple_list_item_1, conversations[fragPos]));
                     msgList.getAdapter();
                     msgList.smoothScrollToPosition(conversations[fragPos].msgList.size());
                     return null;
@@ -277,32 +306,60 @@ public class ConversationActivity extends ActionBarActivity {
                     sendingMsg = false;
                     if (!msgBox.getText().toString().isEmpty())
                         sendBtn.setVisibility(View.VISIBLE);
-                    if (result==null){
+                    if (result == null) {
                         System.out.print("nope");
                         conversations[fragPos].msgList.remove(conversations[fragPos].msgList.size());
-                        ListView msgList = (ListView)frag.getView().findViewById(R.id.messageList);
-                        msgList.setAdapter(new MessageAdapter(Globals.context, android.R.layout.simple_list_item_1, conversations[fragPos].msgList));
+                        ListView msgList = (ListView) frag.getView().findViewById(R.id.messageList);
+                        msgList.setAdapter(new MessageAdapter(Globals.context, android.R.layout.simple_list_item_1, conversations[fragPos]));
                         msgList.getAdapter();
                         msgList.smoothScrollToPosition(conversations[fragPos].msgList.size());
-                        toast = Toast.makeText(Globals.context, "Could not send", Toast.LENGTH_SHORT);
-                        toast.show();
+                        Toast.makeText(Globals.context, "Could not send", Toast.LENGTH_SHORT).show();
                     }
-                    return null;
+                    else if (result == "DISABLED") Toast.makeText(Globals.context, "User is disabled", Toast.LENGTH_SHORT).show();
+                    else if (result == "ALREADYIN") Toast.makeText(Globals.context, "Already in conversation", Toast.LENGTH_SHORT).show();
+                    else if (result == "NOTEXIST") Toast.makeText(Globals.context, "User does not exist", Toast.LENGTH_SHORT).show();
+                    else if (result == "NOTYOU") Toast.makeText(Globals.context, "You can't talk to yourself", Toast.LENGTH_SHORT).show();
+                    else if (result == "NOHASH") {
+                        Toast.makeText(Globals.context, "Invalid hash, please login", Toast.LENGTH_SHORT).show();
+                        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(Globals.context);
+                        SharedPreferences.Editor e = prefs.edit();
+                        e.putString("CREDENTIALS", "");
+                        e.commit();
+                        startActivity(new Intent(Globals.context, LoginActivity.class));
+                        finish();
+                    }
+                    else if (result == "NOPOST") Toast.makeText(Globals.context, "Could not send", Toast.LENGTH_SHORT).show();
+                        return null;
                 }
-            }, "http://m.chatfle.com/send_message.php", "hash", Globals.hash, "convo_id", conversations[convo].convo_id, "message", msg);
+            }, "http://m.chatfle.com/"+((isNewConvo)?"start_convo.php":"send_message.php"), "hash", Globals.hash,
+                    (isNewConvo)?"their_user":"convo_id", ((isNewConvo)?conversations[convo].display_name:conversations[convo].convo_id), "message", msg);
             msgBox.setText("");
         } catch (NullPointerException e) {
             e.printStackTrace();
         }
+
+    }
+
+    private static void readMessages(final int i){
+        Networking.execute(new NetCallBack<Void, String>() {
+            @Override
+            public Void callPre() {return null;}
+            @Override
+            public Void callPost(String result) {
+                conversations[i].hasNew = false;
+                if (result.equals("SUCCESS"))
+                    Toast.makeText(Globals.context, "read success", Toast.LENGTH_SHORT).show();
+                return null;
+            }
+        }, "http://m.chatfle.com/update_read.php", "hash", Globals.hash, "convo_id", conversations[i].convo_id);
     }
 
     public static class PlaceholderFragment extends Fragment {
-        private static final String ARG_ONE = "section_number";
+        private static final String FRAG_POS = "section_number";
         public static PlaceholderFragment newInstance(int sectionNumber) {
-            System.out.println("initializing fragment "+sectionNumber);
             PlaceholderFragment fragment = new PlaceholderFragment();
             Bundle args = new Bundle();
-            args.putInt(ARG_ONE, sectionNumber);
+            args.putInt(FRAG_POS, sectionNumber);
             fragment.setArguments(args);
             return fragment;
         }
@@ -311,7 +368,6 @@ public class ConversationActivity extends ActionBarActivity {
         private ProgressBar progBar;
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-            System.out.println("onCreateVIew  "+getArguments().getInt(ARG_ONE));
             View rootView = inflater.inflate(R.layout.fragment_convo, container, false);
             msgList = (ListView) rootView.findViewById(R.id.messageList);
             progBar = (ProgressBar) rootView.findViewById(R.id.loadingImg);
@@ -345,7 +401,6 @@ public class ConversationActivity extends ActionBarActivity {
     protected void onPause() {
         newMsgTimer.cancel();
         timer.cancel();
-        timer.purge();
         stopChecking = true;
         System.out.println("timer cancelled");
         super.onPause();
@@ -363,6 +418,23 @@ public class ConversationActivity extends ActionBarActivity {
         timer.cancel();
         timer.purge();
         stopChecking = true;
+        final ArrayList<String>[] convData = new ArrayList[4];
+        for (int q=0; q<convData.length; ++q)
+            convData[q] = new ArrayList<String>();
+        for (Conversation c : conversations){
+            convData[0].add(c.convo_id);
+            convData[1].add(c.display_name);
+            convData[2].add(c.msg_preview);
+            convData[3].add(Boolean.toString(c.hasNew));
+        }
+        Intent intent = new Intent(this, NotificationService.class);
+        intent.putExtra("SENDER", conversations[currentConvo].display_name);
+        intent.putExtra("MESSAGE", conversations[currentConvo].msg_preview);
+        intent.putExtra("CONVID", convData[0]);
+        intent.putExtra("DISPNAME", convData[1]);
+        intent.putExtra("MSGPREV", convData[2]);
+        intent.putExtra("HASNEW", convData[3]);
+        startService(intent);
         super.finish();
     }
 

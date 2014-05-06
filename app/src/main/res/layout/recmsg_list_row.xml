@@ -16,22 +16,11 @@
     <TextView
         android:id="@+id/timestamp"
         android:layout_below="@id/message_content"
-        android:layout_marginStart="5dp"
+        android:layout_alignStart="@id/message_content"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Timestamp"
-        android:textColor="@color/recmsgtxt"
-        android:textSize="10dip"
-        android:textStyle="italic"/>
-    <TextView
-        android:id="@+id/sender"
-        android:layout_below="@id/message_content"
-        android:layout_toRightOf="@id/timestamp"
-        android:layout_marginStart="5dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Sender"
-        android:textColor="@color/Blood"
+        android:textColor="@color/rectimestamp"
         android:textSize="10dip"
         android:textStyle="italic"/>
 </RelativeLayout>

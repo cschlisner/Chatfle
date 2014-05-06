@@ -6,9 +6,21 @@ import java.util.ArrayList;
  * Created by Cole on 4/20/14.
  */
 public class Conversation {
-    public String convo_id, display_name, msg_preview;
+    public String convo_id, display_name, their_user,  msg_preview;
+    public boolean hasNew;
     public ArrayList<Message> msgList;
+    public Conversation(String convo_id, String display_name, String their_user, String msg_preview){
+        this.convo_id = convo_id;
+        this.display_name = display_name;
+        this.their_user = their_user;
+        this.msg_preview = msg_preview;
+        msgList = new ArrayList<Message>();
+    }
     public Conversation(){
+        this.convo_id = "";
+        this.display_name = "";
+        this.their_user = "";
+        this.msg_preview = "";
         msgList = new ArrayList<Message>();
     }
 }

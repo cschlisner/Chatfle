@@ -41,8 +41,6 @@ public class Networking {
             @Override
             protected String doInBackground(String... params){
                 HttpResponse response = getResponse(params);
-                //if (response!=null)
-//                    System.out.println("Networking::Response code: "+response.getStatusLine().getStatusCode());
                 try {
                      return EntityUtils.toString(response.getEntity());
                 } catch (NullPointerException e) {
@@ -58,16 +56,11 @@ public class Networking {
                 NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
                 NetworkInfo mData = connManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
                 if (mWifi.isConnected() || mData.isConnected()) {
-//                    System.out.print("Networking::Sending data: ");
-//                    for (String i : params)
-//                        System.out.print(i + " ");
-//                    System.out.println("");
                     final HttpParams httpParams = new BasicHttpParams();
                     HttpConnectionParams.setConnectionTimeout(httpParams, 10000);
                     HttpClient httpclient = new DefaultHttpClient(httpParams);
                     HttpPost httppost = new HttpPost(params[0]);
                     try {
-                        int index = params.length;
                         List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(params.length);
                         for (int i = 2; i < params.length; i += 2)
                             nameValuePairs.add(new BasicNameValuePair(params[i - 1], params[i]));
@@ -83,8 +76,6 @@ public class Networking {
             }
             protected void onPostExecute(String result) {
                 if (result!=null&&!result.isEmpty()&&!result.equals("ERROR")) {
-//                    String print = (result.length()>100)?(result.substring(0, 100)+"..."):result;
-//                    System.out.println("Networking::Result: "+print);
                     netMethod.callPost(result);
                     return;
                 }
