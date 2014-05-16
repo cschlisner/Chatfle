@@ -27,9 +27,11 @@ public class ConversationAdapter extends ArrayAdapter<Conversation> {
         if (v == null) {
             LayoutInflater inflater = (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             v = inflater.inflate(R.layout.conv_list_row, null);
+            if (position%2==0)
+                v.findViewById(R.id.relative_layout).setBackgroundColor(Globals.context.getResources().getColor(R.color.altconv));
+            if (i.hasNew)
+                v.findViewById(R.id.relative_layout).setBackgroundColor(Globals.context.getResources().getColor(R.color.newmsgconv));
         }
-        if (position%2==0)
-            v.findViewById(R.id.relative_layout).setBackground(Globals.context.getResources().getDrawable(R.drawable.altconvselector));
         if (i != null) {
             TextView dispName = (TextView) v.findViewById(R.id.display_name);
             TextView msgPrev = (TextView) v.findViewById(R.id.msg_preview);

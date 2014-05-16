@@ -1,21 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     // Color settings
-    <color name="loginBG">@color/Dark</color>     //login page bg
-    <color name="convoBG">@color/sndmsg</color>         //conversation bg
-    <color name="convListBG">@color/Dark</color>      //conversation list bg
+    <color name="loginBG">@color/Dark</color>               // Backgrounds
+    <color name="convoBG">@color/sndmsg</color>
+    <color name="convListBG">@color/Dark</color>
 
     <color name="recmsg">@color/Dark</color>                //recieved msg
     <color name="recmsgtxt">#ffc9c9c9</color>
     <color name="rectimestamp">@color/Grass</color>
 
-    <color name="sndmsg">@color/Grass</color>                //sent msg
+    <color name="sndmsg">@color/Grass</color>               //sent msg
     <color name="sndmsgtxt">@color/Snow</color>
     <color name="sndtimestamp">#ff454545</color>
 
-    <color name="conv">#ff3ab070</color>               //conversation list bubble color
-    <color name="altconv">#ff39955a</color>           // alternate conversation list bubble color
+    <color name="conv">#ff3ab070</color>                    //conversation list
+    <color name="altconv">#ff39955a</color>
     <color name="convtxt">@color/White</color>
+    <color name="newmsgconv">@color/Blood</color>
 
     // Flat UI
     <color name="Sky">#13b7d2</color>

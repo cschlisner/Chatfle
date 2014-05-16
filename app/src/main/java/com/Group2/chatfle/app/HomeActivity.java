@@ -14,6 +14,7 @@ import android.os.AsyncTask;
 import android.os.Parcelable;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ActionBarDrawerToggle;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
@@ -50,14 +51,17 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class HomeActivity extends ActionBarActivity {
-
+    public static boolean isPaused;
     DrawerLayout drawerLayout;
     ListView drawerList, convList;
     ProgressBar loadSpinner;
     Context context;
     Button retryButton;
+    Timer timer;
     private ActionBarDrawerToggle drawerToggle;
 
     private CharSequence drawerTitle;
@@ -135,6 +139,29 @@ public class HomeActivity extends ActionBarActivity {
         }
     }
 
+    @Override
+    protected void onResume() {
+        isPaused = false;
+        timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                        refreshConvos();
+            }
+        }, 0, 4000);
+        System.out.println("conv timer scheduled");
+        super.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        isPaused = true;
+        timer.cancel();
+        timer.purge();
+        System.out.println("conv timer cancelled");
+        super.onPause();
+    }
+
     /* The click listner for ListView in the navigation drawer */
     private class DrawerItemClickListener implements ListView.OnItemClickListener {
         @Override
@@ -199,18 +226,18 @@ public class HomeActivity extends ActionBarActivity {
     }
 
     private void refreshConvos(){
-        retryButton.setVisibility(View.GONE);
+        //retryButton.setVisibility(View.GONE);
         Globals.context = this;
         Networking.execute(new NetCallBack<Void, String>() {
             @Override
             public Void callPre() {
-                loadSpinner.setVisibility(View.VISIBLE);
+                //loadSpinner.setVisibility(View.VISIBLE);
                 return null;
             }
 
             @Override
             public Void callPost(String result) {
-                loadSpinner.setVisibility(View.GONE);
+                //loadSpinner.setVisibility(View.GONE);
                 if (result != null) {
                     try {
                         JSONObject jso = new JSONObject(result);
@@ -221,7 +248,9 @@ public class HomeActivity extends ActionBarActivity {
                             Conversation tmpConvo = new Conversation(o.getString("convo_id"),
                                                                      o.getString("display_name"),
                                                                      o.getString("their_user"),
-                                                                     o.getString("msg_preview"));
+                                                                     o.getString("msg_preview"),
+                                                                     o.getString("new_msg"),
+                                                                     o.getString("can_reveal"));
                             conversations.add(tmpConvo);
                         }
                     } catch (JSONException e) {
@@ -231,7 +260,7 @@ public class HomeActivity extends ActionBarActivity {
                 }
                 else {
                     Toast.makeText(Globals.context, "No response from server", Toast.LENGTH_SHORT).show();
-                    retryButton.setVisibility(View.VISIBLE);
+                    //retryButton.setVisibility(View.VISIBLE);
                 }
                 return null;
             }
@@ -266,7 +295,7 @@ public class HomeActivity extends ActionBarActivity {
                         @Override
                         public Void callPost(String result) {
                             if (result != null) {
-                                Conversation newConv = new Conversation("", "", value, "");
+                                Conversation newConv = new Conversation("", "", value, "", "false", "false");
                                 conversations.add(newConv);
                                 enterConvos(conversations.size() - 1);
                             }
@@ -286,9 +315,7 @@ public class HomeActivity extends ActionBarActivity {
         alert.show();
     }
 
-    /**
-     * Fragment that appears in the "content_frame", shows a planet
-     */
+
     public class ContentFragment extends Fragment {
         public ContentFragment() {
             // Empty constructor required for fragment subclasses
@@ -315,14 +342,13 @@ public class HomeActivity extends ActionBarActivity {
             } catch (NullPointerException e) {
                 e.printStackTrace();
             }
-            //TODO: make conversations list adapter
-
             convList.setAdapter(new ConversationAdapter(context, android.R.layout.simple_list_item_1, conversations));
             convList.getAdapter();
-
             convList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                    conversations.get(i).hasNew= false;
+                    convList.getChildAt(i).setBackgroundColor(Globals.context.getResources().getColor((i%2==0)?R.color.altconv:R.color.conv));
                     enterConvos(i);
                 }
             });
@@ -336,12 +362,12 @@ public class HomeActivity extends ActionBarActivity {
         for (Conversation c : conversations){
             convData[0].add(c.convo_id);
             convData[1].add(c.display_name);
-            convData[2].add(c.msg_preview);
+            convData[2].add(Boolean.toString(c.can_reveal));
         }
         Intent intent = new Intent(context, ConversationActivity.class);
         intent.putExtra("CONVID", convData[0]);
         intent.putExtra("DISPNAME", convData[1]);
-        intent.putExtra("MSGPREV", convData[2]);
+        intent.putExtra("CANREV", convData[2]);
         intent.putExtra("POSITION", i);
         startActivity(intent);
         convList.setItemChecked(i, true);

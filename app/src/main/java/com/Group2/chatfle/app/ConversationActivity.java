@@ -6,11 +6,14 @@ import java.util.TimerTask;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.Preferences;
 
+import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.support.v13.app.FragmentPagerAdapter;
 import android.os.Bundle;
 import android.support.v4.view.ViewPager;
@@ -44,8 +47,7 @@ import org.json.JSONObject;
 public class ConversationActivity extends ActionBarActivity {
     static SectionsPagerAdapter mSectionsPagerAdapter;
     ViewPager mViewPager;
-    Toast toast;
-    static boolean sendingMsg, checkNew, stopChecking;
+    static boolean sendingMsg, checkNew, stopChecking, convosLoaded, timerRunning;
     static Conversation conversations[];
     EditText msgBox;
     ImageButton sendBtn;
@@ -99,19 +101,14 @@ public class ConversationActivity extends ActionBarActivity {
         });
         Intent intent = getIntent();
         conversations = new Conversation[intent.getStringArrayListExtra("CONVID").size()];
-        for (int i=0; i<conversations.length; ++i)
-            conversations[i] = new Conversation();
         ArrayList<String>[] convData = new ArrayList[3];
         for (int i=0; i<3; ++i)
             convData[i] = new ArrayList<String>();
         convData[0].addAll(intent.getStringArrayListExtra("CONVID"));
         convData[1].addAll(intent.getStringArrayListExtra("DISPNAME"));
-        convData[2].addAll(intent.getStringArrayListExtra("MSGPREV"));
-        for (int i=0; i<conversations.length; ++i) {
-            conversations[i].convo_id = convData[0].get(i);
-            conversations[i].display_name = convData[1].get(i);
-            conversations[i].msg_preview = convData[2].get(i);
-        }
+        convData[2].addAll(intent.getStringArrayListExtra("CANREV"));
+        for (int i=0; i<conversations.length; ++i)
+            conversations[i] = new Conversation(convData[0].get(i), convData[1].get(i), "", "", "false", convData[2].get(i));
         currentConvo = intent.getIntExtra("POSITION", 0);
         mSectionsPagerAdapter = new SectionsPagerAdapter(getFragmentManager());
         // Set up the ViewPager with the sections adapter.
@@ -121,27 +118,18 @@ public class ConversationActivity extends ActionBarActivity {
         mViewPager.setOnPageChangeListener(new pageChange());
         mViewPager.setCurrentItem(currentConvo);
         setTitle(conversations[currentConvo].display_name);
-
-        newMsgTimer = new TimerTask() {
-            @Override
-            public void run() {
-            if (!sendingMsg&&!checkNew) {
-                checkNew = true;
-                for (int i=(currentConvo>0)?currentConvo-1:currentConvo; i<=((currentConvo+1<conversations.length)?currentConvo+1:currentConvo); ++i)
-                    checkNewMessage(i);
-            }
-            }
-        };
+        readMessages(currentConvo);
     }
 
     class pageChange implements ViewPager.OnPageChangeListener {
         public pageChange(){}
         @Override
         public void onPageSelected(int position) {
-            setTitle(conversations[position].display_name);
             currentConvo = position;
-            if (mSectionsPagerAdapter.getFragmentAt(position)!=null)
-                getMessages(mSectionsPagerAdapter.getFragmentAt(position), null, null);
+            setTitle(conversations[currentConvo].display_name);
+            invalidateOptionsMenu();
+            if (mSectionsPagerAdapter.getFragmentAt(currentConvo)!=null)
+                getMessages(mSectionsPagerAdapter.getFragmentAt(currentConvo), null, null);
             if (conversations[currentConvo].hasNew)
                 readMessages(currentConvo);
         }
@@ -162,11 +150,23 @@ public class ConversationActivity extends ActionBarActivity {
 
         @Override
         public Fragment getItem(int position) {
-            if (position==((currentConvo<conversations.length-1)?currentConvo+1:currentConvo)) {
+            if (position==((currentConvo<conversations.length-1)?currentConvo+1:currentConvo) && !timerRunning) {
                 stopChecking = false;
+                timer.cancel();
                 timer = new Timer();
-                timer.schedule(newMsgTimer, 4000, 1000);
+                timer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        if (!sendingMsg&&!checkNew) {
+                            checkNew = true;
+                            for (int i=(currentConvo>0)?currentConvo-1:currentConvo; i<=((currentConvo+1<conversations.length)?currentConvo+1:currentConvo); ++i)
+                                checkNewMessage(i);
+                        }
+                    }
+                }, 4000, 1000);
                 System.out.println("timer scheduled");
+                convosLoaded = true;
+                timerRunning = true;
             }
             return PlaceholderFragment.newInstance(position);
         }
@@ -251,8 +251,6 @@ public class ConversationActivity extends ActionBarActivity {
                public Void callPost(String result) {
                    --checkingMsgs;
                    if (result != null) {
-                       conversations[currentConvo].hasNew = (i != currentConvo);
-                       if (conversations[currentConvo].hasNew == false) readMessages(i);
                        try {
                            JSONObject jso = new JSONObject(result);
                            JSONArray messages = jso.getJSONArray("messages");
@@ -262,13 +260,16 @@ public class ConversationActivity extends ActionBarActivity {
                                        o.getString("msg"),
                                        o.getString("timestamp"),
                                        o.getString("msg_sender"));
-                               conversations[position].msgList.add(m);
+                               if (!m.timestamp.equals(conversations[position].msgList.get(conversations[position].msgList.size()-1)))
+                                    conversations[position].msgList.add(m);
                            }
                        } catch (JSONException e) {
                            e.printStackTrace();
                        }
                        msgList.setAdapter(new MessageAdapter(Globals.context, android.R.layout.simple_list_item_1, conversations[position]));
                        msgList.getAdapter();
+                       conversations[currentConvo].hasNew = (i != currentConvo);
+                       if (!conversations[currentConvo].hasNew) readMessages(i);
                    }
                    if (position == ((currentConvo+1<conversations.length)?currentConvo+1:currentConvo))
                        checkNew = false;
@@ -346,9 +347,7 @@ public class ConversationActivity extends ActionBarActivity {
             public Void callPre() {return null;}
             @Override
             public Void callPost(String result) {
-                conversations[i].hasNew = false;
-                if (result.equals("SUCCESS"))
-                    Toast.makeText(Globals.context, "read success", Toast.LENGTH_SHORT).show();
+                if (result.equals("SUCCESS")) conversations[i].hasNew = false;
                 return null;
             }
         }, "http://m.chatfle.com/update_read.php", "hash", Globals.hash, "convo_id", conversations[i].convo_id);
@@ -382,6 +381,7 @@ public class ConversationActivity extends ActionBarActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.conversation, menu);
+        menu.findItem(R.id.action_reveal).setVisible(conversations[currentConvo].can_reveal);
         return true;
     }
 
@@ -399,55 +399,103 @@ public class ConversationActivity extends ActionBarActivity {
 
     @Override
     protected void onPause() {
-        newMsgTimer.cancel();
         timer.cancel();
+        timer.purge();
         stopChecking = true;
         System.out.println("timer cancelled");
+
+        if (HomeActivity.isPaused) {
+            final ArrayList<String>[] convData = new ArrayList[3];
+            for (int q=0; q<convData.length; ++q)
+                convData[q] = new ArrayList<String>();
+            for (Conversation c : conversations){
+                convData[0].add(c.convo_id);
+                convData[1].add(c.display_name);
+                convData[2].add(Boolean.toString(c.hasNew));
+            }
+            Intent intent = new Intent(this, NotificationService.class);
+            intent.putExtra("SENDER", conversations[currentConvo].display_name);
+            intent.putExtra("MESSAGE", conversations[currentConvo].msg_preview);
+            intent.putExtra("CONVID", convData[0]);
+            intent.putExtra("DISPNAME", convData[1]);
+            intent.putExtra("HASNEW", convData[2]);
+            startService(intent);
+        }
         super.onPause();
     }
 
     @Override
     protected void onResume() {
+        NotificationService.stopAll();
+        timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (!sendingMsg&&!checkNew) {
+                    checkNew = true;
+                    for (int i=(currentConvo>0)?currentConvo-1:currentConvo; i<=((currentConvo+1<conversations.length)?currentConvo+1:currentConvo); ++i)
+                        checkNewMessage(i);
+                }
+            }
+        }, 0, 1000);
+        System.out.println("timer scheduled");
         super.onResume();
     }
 
 
     @Override
     public void finish() {
-        newMsgTimer.cancel();
         timer.cancel();
         timer.purge();
         stopChecking = true;
-        final ArrayList<String>[] convData = new ArrayList[4];
-        for (int q=0; q<convData.length; ++q)
-            convData[q] = new ArrayList<String>();
-        for (Conversation c : conversations){
-            convData[0].add(c.convo_id);
-            convData[1].add(c.display_name);
-            convData[2].add(c.msg_preview);
-            convData[3].add(Boolean.toString(c.hasNew));
-        }
-        Intent intent = new Intent(this, NotificationService.class);
-        intent.putExtra("SENDER", conversations[currentConvo].display_name);
-        intent.putExtra("MESSAGE", conversations[currentConvo].msg_preview);
-        intent.putExtra("CONVID", convData[0]);
-        intent.putExtra("DISPNAME", convData[1]);
-        intent.putExtra("MSGPREV", convData[2]);
-        intent.putExtra("HASNEW", convData[3]);
-        startService(intent);
         super.finish();
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-        if (id == R.id.action_refresh) {
-            getMessages(mSectionsPagerAdapter.getFragmentAt(mViewPager.getCurrentItem()), null, null);
-            return true;
+        switch (id) {
+            case R.id.action_refresh:
+                getMessages(mSectionsPagerAdapter.getFragmentAt(mViewPager.getCurrentItem()), null, null);
+                return true;
+            case R.id.action_reveal:
+                reveal();
+                return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void reveal(){
+        AlertDialog.Builder alert = new AlertDialog.Builder(this);
+        alert.setTitle("Reveal Identity");
+        alert.setMessage("Are you sure you want to reveal yourself?");
+        alert.setInverseBackgroundForced(true);
+        alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                Networking.execute(new NetCallBack<Void, String>() {
+                    @Override
+                    public Void callPre() {
+                        return null;
+                    }
+
+                    @Override
+                    public Void callPost(String result) {
+                        String msg;
+                        if (result.equals("NOT STARTER")) msg = "You didn't start this conversation!";
+                        else if (result.equals("ALREADY REVEALED")) msg = "You have already revealed yourself!";
+                        else msg = "Identity Revelaed";
+                        Toast.makeText(Globals.context, msg, Toast.LENGTH_SHORT).show();
+                        return null;
+                    }
+                }, "http://m.chatfle.com/user_reveal.php", "hash", Globals.hash, "convo_id", conversations[currentConvo].convo_id);
+            }
+        });
+
+        alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                // Canceled.
+            }
+        });
+        alert.show();
     }
 }
