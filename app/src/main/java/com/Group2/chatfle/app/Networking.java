@@ -1,9 +1,13 @@
 package com.Group2.chatfle.app;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
+import android.preference.PreferenceManager;
+import android.widget.Toast;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -75,7 +79,14 @@ public class Networking {
                 return null;
             }
             protected void onPostExecute(String result) {
+                String[][] exceptions = {{"DISABLED","User is disabled"},
+                                         {"ALREADYIN", "Already in conversation"},
+                                         {"NOTEXIST", "User does not exist"},
+                                         {"NOTYOU", "You can't talk to yourself"},
+                                         {"NOPOST", "Could not send"}};
                 if (result!=null&&!result.isEmpty()&&!result.equals("ERROR")) {
+                    for (String[] s : exceptions)
+                        if (result.equals(s[0])) Toast.makeText(Globals.context, s[1], Toast.LENGTH_SHORT).show();
                     netMethod.callPost(result);
                     return;
                 }

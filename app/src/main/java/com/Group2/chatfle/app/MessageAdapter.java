@@ -46,7 +46,7 @@ public class MessageAdapter extends ArrayAdapter<Message> {
                 else {
                     long unixSeconds = Long.valueOf(i.timestamp);
                     Date date = new Date(unixSeconds * 1000L);
-                    SimpleDateFormat sdf = new SimpleDateFormat("hh:mm a");
+                    SimpleDateFormat sdf = new SimpleDateFormat((((System.currentTimeMillis()/1000L)-unixSeconds)>86400L)?"d/M/y":"hh:mm a");
                     sdf.setTimeZone(TimeZone.getDefault());
                     String formattedDate = sdf.format(date);
                     timeStamp.setText(formattedDate);

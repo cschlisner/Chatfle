@@ -8,4 +8,6 @@ import android.content.Context;
 public class Globals {
     public static String hash;
     public static Context context;
+    public static HomeActivity homeInstance = null;
+    public static NotificationService notificationService;
 }

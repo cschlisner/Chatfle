@@ -46,6 +46,8 @@ import org.json.JSONObject;
 
 public class ConversationActivity extends ActionBarActivity {
     static SectionsPagerAdapter mSectionsPagerAdapter;
+    NotificationService n = null;
+    private static Object syncObj = new Object();
     ViewPager mViewPager;
     static boolean sendingMsg, checkNew, stopChecking, convosLoaded, timerRunning;
     static Conversation conversations[];
@@ -101,6 +103,7 @@ public class ConversationActivity extends ActionBarActivity {
         });
         Intent intent = getIntent();
         conversations = new Conversation[intent.getStringArrayListExtra("CONVID").size()];
+
         ArrayList<String>[] convData = new ArrayList[3];
         for (int i=0; i<3; ++i)
             convData[i] = new ArrayList<String>();
@@ -119,6 +122,7 @@ public class ConversationActivity extends ActionBarActivity {
         mViewPager.setCurrentItem(currentConvo);
         setTitle(conversations[currentConvo].display_name);
         readMessages(currentConvo);
+        //Log.d("OnCreate", "end");
     }
 
     class pageChange implements ViewPager.OnPageChangeListener {
@@ -153,6 +157,7 @@ public class ConversationActivity extends ActionBarActivity {
             if (position==((currentConvo<conversations.length-1)?currentConvo+1:currentConvo) && !timerRunning) {
                 stopChecking = false;
                 timer.cancel();
+                System.out.println("timer cancelled");
                 timer = new Timer();
                 timer.schedule(new TimerTask() {
                     @Override
@@ -168,6 +173,7 @@ public class ConversationActivity extends ActionBarActivity {
                 convosLoaded = true;
                 timerRunning = true;
             }
+            //Log.d("getItem", "end");
             return PlaceholderFragment.newInstance(position);
         }
 
@@ -187,6 +193,7 @@ public class ConversationActivity extends ActionBarActivity {
     }
 
     private static void getMessages(final Fragment frag, final ListView lv, final ProgressBar pb){
+        //Log.d("getMessages", "start");
         if (gettingMsgs < 4) {
             final int position = frag.getArguments().getInt("section_number");
             final ListView msgList = (lv==null)?((ListView) frag.getView().findViewById(R.id.messageList)):lv;
@@ -194,6 +201,8 @@ public class ConversationActivity extends ActionBarActivity {
             Networking.execute(new NetCallBack<Void, String>() {
                 @Override
                 public Void callPre() {
+                    //Log.d("getMessages", "callPre");
+                    stopChecking = true;
                     if (pb != null)
                         pb.setVisibility(View.VISIBLE);
                     ++gettingMsgs;
@@ -202,6 +211,8 @@ public class ConversationActivity extends ActionBarActivity {
 
                 @Override
                 public Void callPost(String result) {
+                    ////Log.d("getMessages", "callPost");
+                    stopChecking = false;
                     --gettingMsgs;
                     if (pb != null)
                         pb.setVisibility(View.GONE);
@@ -212,20 +223,15 @@ public class ConversationActivity extends ActionBarActivity {
                             JSONArray messages = jso.getJSONArray("messages");
                             conversations[position].msgList.clear();
                             if (messages.length()>0) {
-                                for (int i = 0; i < messages.length(); ++i) {
-                                    JSONObject o = messages.getJSONObject(i);
-                                    Message m = new Message(o.getString("display_name"),
-                                                            o.getString("msg"),
-                                                            o.getString("timestamp"),
-                                                            o.getString("msg_sender"));
-                                    conversations[position].msgList.add(m);
-                                }
+                                for (int i = 0; i < messages.length(); ++i)
+                                    conversations[position].msgList.add(new Message(messages.getJSONObject(i)));
                             }
                             else Toast.makeText(Globals.context, "Send a message to get started", Toast.LENGTH_SHORT);
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
                     }
+                    //System.out.println(result);
                     msgList.setAdapter(new MessageAdapter(Globals.context, android.R.layout.simple_list_item_1, conversations[position]));
                     msgList.getAdapter();
                     return null;
@@ -235,7 +241,8 @@ public class ConversationActivity extends ActionBarActivity {
     }
 
     public static void checkNewMessage(final int i){
-        if (checkingMsgs<4) {
+        ////Log.d("checkNewMessage", "start");
+        if (checkingMsgs<4 && !stopChecking) {
            final Fragment frag = mSectionsPagerAdapter.getFragmentAt(i);
            final ListView msgList = (ListView) frag.getView().findViewById(R.id.messageList);
            final int position = frag.getArguments().getInt("section_number");
@@ -255,11 +262,7 @@ public class ConversationActivity extends ActionBarActivity {
                            JSONObject jso = new JSONObject(result);
                            JSONArray messages = jso.getJSONArray("messages");
                            for (int i = 0; i < messages.length(); ++i) {
-                               JSONObject o = messages.getJSONObject(i);
-                               Message m = new Message(o.getString("display_name"),
-                                       o.getString("msg"),
-                                       o.getString("timestamp"),
-                                       o.getString("msg_sender"));
+                               Message m = new Message(messages.getJSONObject(i));
                                if (!m.timestamp.equals(conversations[position].msgList.get(conversations[position].msgList.size()-1)))
                                     conversations[position].msgList.add(m);
                            }
@@ -280,6 +283,7 @@ public class ConversationActivity extends ActionBarActivity {
     }
 
     public void sendMessage(View v){
+        //Log.d("sendMessage", "start");
         int convo = mViewPager.getCurrentItem();
         final Fragment frag = mSectionsPagerAdapter.getFragmentAt(convo);
         final int fragPos = frag.getArguments().getInt("section_number");
@@ -298,6 +302,7 @@ public class ConversationActivity extends ActionBarActivity {
                     msgList.setAdapter(new MessageAdapter(Globals.context, android.R.layout.simple_list_item_1, conversations[fragPos]));
                     msgList.getAdapter();
                     msgList.smoothScrollToPosition(conversations[fragPos].msgList.size());
+                    //Globals.hash = "thisisahashiswear";
                     return null;
                 }
 
@@ -316,11 +321,7 @@ public class ConversationActivity extends ActionBarActivity {
                         msgList.smoothScrollToPosition(conversations[fragPos].msgList.size());
                         Toast.makeText(Globals.context, "Could not send", Toast.LENGTH_SHORT).show();
                     }
-                    else if (result == "DISABLED") Toast.makeText(Globals.context, "User is disabled", Toast.LENGTH_SHORT).show();
-                    else if (result == "ALREADYIN") Toast.makeText(Globals.context, "Already in conversation", Toast.LENGTH_SHORT).show();
-                    else if (result == "NOTEXIST") Toast.makeText(Globals.context, "User does not exist", Toast.LENGTH_SHORT).show();
-                    else if (result == "NOTYOU") Toast.makeText(Globals.context, "You can't talk to yourself", Toast.LENGTH_SHORT).show();
-                    else if (result == "NOHASH") {
+                    else if (result.equals("NOHASH")) {
                         Toast.makeText(Globals.context, "Invalid hash, please login", Toast.LENGTH_SHORT).show();
                         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(Globals.context);
                         SharedPreferences.Editor e = prefs.edit();
@@ -329,8 +330,7 @@ public class ConversationActivity extends ActionBarActivity {
                         startActivity(new Intent(Globals.context, LoginActivity.class));
                         finish();
                     }
-                    else if (result == "NOPOST") Toast.makeText(Globals.context, "Could not send", Toast.LENGTH_SHORT).show();
-                        return null;
+                    return null;
                 }
             }, "http://m.chatfle.com/"+((isNewConvo)?"start_convo.php":"send_message.php"), "hash", Globals.hash,
                     (isNewConvo)?"their_user":"convo_id", ((isNewConvo)?conversations[convo].display_name:conversations[convo].convo_id), "message", msg);
@@ -342,6 +342,7 @@ public class ConversationActivity extends ActionBarActivity {
     }
 
     private static void readMessages(final int i){
+        //Log.d("ReadMessage", "start");
         Networking.execute(new NetCallBack<Void, String>() {
             @Override
             public Void callPre() {return null;}
@@ -356,6 +357,7 @@ public class ConversationActivity extends ActionBarActivity {
     public static class PlaceholderFragment extends Fragment {
         private static final String FRAG_POS = "section_number";
         public static PlaceholderFragment newInstance(int sectionNumber) {
+            //Log.d("newInstance", "start");
             PlaceholderFragment fragment = new PlaceholderFragment();
             Bundle args = new Bundle();
             args.putInt(FRAG_POS, sectionNumber);
@@ -367,6 +369,7 @@ public class ConversationActivity extends ActionBarActivity {
         private ProgressBar progBar;
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+            //Log.d("OnCreateView", "start");
             View rootView = inflater.inflate(R.layout.fragment_convo, container, false);
             msgList = (ListView) rootView.findViewById(R.id.messageList);
             progBar = (ProgressBar) rootView.findViewById(R.id.loadingImg);
@@ -403,30 +406,18 @@ public class ConversationActivity extends ActionBarActivity {
         timer.purge();
         stopChecking = true;
         System.out.println("timer cancelled");
-
         if (HomeActivity.isPaused) {
-            final ArrayList<String>[] convData = new ArrayList[3];
-            for (int q=0; q<convData.length; ++q)
-                convData[q] = new ArrayList<String>();
-            for (Conversation c : conversations){
-                convData[0].add(c.convo_id);
-                convData[1].add(c.display_name);
-                convData[2].add(Boolean.toString(c.hasNew));
-            }
-            Intent intent = new Intent(this, NotificationService.class);
-            intent.putExtra("SENDER", conversations[currentConvo].display_name);
-            intent.putExtra("MESSAGE", conversations[currentConvo].msg_preview);
-            intent.putExtra("CONVID", convData[0]);
-            intent.putExtra("DISPNAME", convData[1]);
-            intent.putExtra("HASNEW", convData[2]);
-            startService(intent);
+            n = new NotificationService();
+            Globals.notificationService = n;
+            n.setAlarm(getApplicationContext(), 1000, conversations);
         }
         super.onPause();
     }
 
     @Override
     protected void onResume() {
-        NotificationService.stopAll();
+        //Log.d("OnResume", "start");
+        if (n != null) n.cancelAlarm(getApplicationContext());
         timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -437,7 +428,7 @@ public class ConversationActivity extends ActionBarActivity {
                         checkNewMessage(i);
                 }
             }
-        }, 0, 1000);
+        }, 4000, 1000);
         System.out.println("timer scheduled");
         super.onResume();
     }

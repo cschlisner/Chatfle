@@ -56,6 +56,7 @@ import java.util.TimerTask;
 
 public class HomeActivity extends ActionBarActivity {
     public static boolean isPaused;
+    boolean refreshing;
     DrawerLayout drawerLayout;
     ListView drawerList, convList;
     ProgressBar loadSpinner;
@@ -74,9 +75,9 @@ public class HomeActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
         context = this;
+        if (Globals.hash==null||Globals.hash.isEmpty()) Globals.hash = PreferenceManager.getDefaultSharedPreferences(this).getString("CREDENTIALS","");
         FlatUI.setDefaultTheme(FlatUI.DARK);
         FlatUI.setActionBarTheme(this, FlatUI.DARK, true, true);
-        //Preload Conversations
         //Drawer
         title = drawerTitle = "Chatfle";
         drawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -105,6 +106,7 @@ public class HomeActivity extends ActionBarActivity {
         getActionBar().setDisplayHomeAsUpEnabled(true);
         getActionBar().setHomeButtonEnabled(true);
         createListFrag();
+        Globals.homeInstance = this;
     }
 
     @Override
@@ -129,7 +131,7 @@ public class HomeActivity extends ActionBarActivity {
         // ActionBarDrawerToggle will take care of this.
         switch (item.getItemId()) {
             case R.id.action_refresh:
-                refreshConvos();
+                refreshConvos(loadSpinner);
                 return true;
             case R.id.action_createConv:
                 newConvo();
@@ -142,14 +144,14 @@ public class HomeActivity extends ActionBarActivity {
     @Override
     protected void onResume() {
         isPaused = false;
+        System.out.println("conv timer scheduled");
         timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                        refreshConvos();
+                 refreshConvos(loadSpinner);
             }
         }, 0, 4000);
-        System.out.println("conv timer scheduled");
         super.onResume();
     }
 
@@ -160,6 +162,12 @@ public class HomeActivity extends ActionBarActivity {
         timer.purge();
         System.out.println("conv timer cancelled");
         super.onPause();
+    }
+
+    @Override
+    public void finish() {
+        Globals.homeInstance = null;
+        super.finish();
     }
 
     /* The click listner for ListView in the navigation drawer */
@@ -225,46 +233,60 @@ public class HomeActivity extends ActionBarActivity {
         super.onBackPressed();
     }
 
-    private void refreshConvos(){
-        //retryButton.setVisibility(View.GONE);
-        Globals.context = this;
-        Networking.execute(new NetCallBack<Void, String>() {
-            @Override
-            public Void callPre() {
-                //loadSpinner.setVisibility(View.VISIBLE);
-                return null;
-            }
-
-            @Override
-            public Void callPost(String result) {
-                //loadSpinner.setVisibility(View.GONE);
-                if (result != null) {
-                    try {
-                        JSONObject jso = new JSONObject(result);
-                        JSONArray convos = jso.getJSONArray("convos");
-                        conversations = new ArrayList<Conversation>();
-                        for (int i = 0; i<convos.length(); ++i) {
-                            JSONObject o = convos.getJSONObject(i);
-                            Conversation tmpConvo = new Conversation(o.getString("convo_id"),
-                                                                     o.getString("display_name"),
-                                                                     o.getString("their_user"),
-                                                                     o.getString("msg_preview"),
-                                                                     o.getString("new_msg"),
-                                                                     o.getString("can_reveal"));
-                            conversations.add(tmpConvo);
+    private void refreshConvos(final ProgressBar pb){
+        if (!refreshing) {
+            //retryButton.setVisibility(View.GONE);
+            refreshing = true;
+            Globals.context = this;
+            Networking.execute(new NetCallBack<Void, String>() {
+                @Override
+                public Void callPre() {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            pb.setVisibility(View.VISIBLE);
                         }
-                    } catch (JSONException e) {
-                        e.printStackTrace();
+                    });
+
+                    System.out.println("pre sending");
+                    return null;
+                }
+
+                @Override
+                public Void callPost(String result) {
+                    refreshing = false;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            pb.setVisibility(View.GONE);
+                        }
+                    });
+                    if (result != null) {
+                        try {
+                            JSONObject jso = new JSONObject(result);
+                            JSONArray convos = jso.getJSONArray("convos");
+                            conversations = new ArrayList<Conversation>();
+                            for (int i = 0; i < convos.length(); ++i) {
+                                JSONObject o = convos.getJSONObject(i);
+                                conversations.add(new Conversation(o.getString("convo_id"),
+                                                                         o.getString("display_name"),
+                                                                         o.getString("their_user"),
+                                                                         o.getString("msg_preview"),
+                                                                         o.getString("new_msg"),
+                                                                         o.getString("can_reveal")));
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        convFrag.createList();
+                    } else {
+                        Toast.makeText(Globals.context, "No response from server", Toast.LENGTH_SHORT).show();
+                        //retryButton.setVisibility(View.VISIBLE);
                     }
-                    convFrag.createList();
+                    return null;
                 }
-                else {
-                    Toast.makeText(Globals.context, "No response from server", Toast.LENGTH_SHORT).show();
-                    //retryButton.setVisibility(View.VISIBLE);
-                }
-                return null;
-            }
-        }, "http://m.chatfle.com/get_convos.php", "hash", Globals.hash);
+            }, "http://m.chatfle.com/get_convos.php", "hash", Globals.hash);
+        }
     }
 
     private void newConvo(){
@@ -294,12 +316,11 @@ public class HomeActivity extends ActionBarActivity {
 
                         @Override
                         public Void callPost(String result) {
-                            if (result != null) {
+                            if (result != null && !result.equals("NOTEXIST")) {
                                 Conversation newConv = new Conversation("", "", value, "", "false", "false");
                                 conversations.add(newConv);
                                 enterConvos(conversations.size() - 1);
                             }
-                            else Toast.makeText(Globals.context, "User does not exist", Toast.LENGTH_SHORT).show();
                             return null;
                         }
                     }, "http://m.chatfle.com/user_exist.php", "user", value);
@@ -328,11 +349,11 @@ public class HomeActivity extends ActionBarActivity {
             retryButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    refreshConvos();
+                    refreshConvos(loadSpinner);
                 }
             });
             getActivity().setTitle("Conversations");
-            refreshConvos();
+            refreshConvos(loadSpinner);
             return rootView;
         }
 
